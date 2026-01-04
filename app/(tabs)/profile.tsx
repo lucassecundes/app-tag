@@ -1,16 +1,53 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { supabase } from '../../lib/supabase';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const [userName, setUserName] = useState<string>('Usuário');
+  const [userData, setUserData] = useState<any>(null);
+
+  // useFocusEffect para recarregar dados sempre que a tela ganhar foco (ex: voltar da edição)
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchUserData = async () => {
+        if (user) {
+          // Tenta pegar do metadata primeiro
+          if (user.user_metadata?.full_name) {
+            setUserName(user.user_metadata.full_name);
+          }
+
+          // Busca na tabela usuario para garantir dados atualizados
+          try {
+            const { data, error } = await supabase
+              .from('usuario')
+              .select('*')
+              .eq('auth_user_id', user.id)
+              .single();
+
+            if (data) {
+              setUserData(data);
+              if (data.nome) {
+                setUserName(data.nome);
+              }
+            }
+          } catch (error) {
+            console.error('Erro ao buscar dados do perfil:', error);
+          }
+        }
+      };
+
+      fetchUserData();
+    }, [user])
+  );
 
   const menuItems = [
-    { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => {} },
+    { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => router.push('/(tabs)/personal-data') },
     // Ação atualizada para navegar para a tela de dispositivos
     { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
     { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => {} },
@@ -26,7 +63,7 @@ export default function ProfileScreen() {
             {user?.email?.substring(0, 2).toUpperCase() || 'US'}
           </Text>
         </View>
-        <Text style={styles.userName}>{user?.user_metadata?.full_name || 'Usuário'}</Text>
+        <Text style={styles.userName}>{userName}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
       </View>
 

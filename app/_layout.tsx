@@ -3,9 +3,10 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '../hooks/useFrameworkReady';
 import { AuthProvider } from '../context/AuthContext';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useFonts, Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
 import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold } from '@expo-google-fonts/poppins';
-import { View, LogBox } from 'react-native';
+import { View, LogBox, Platform } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -17,8 +18,17 @@ LogBox.ignoreLogs([
   'Warning: findDOMNode is deprecated',
 ]);
 
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  const originalError = console.error;
+  console.error = (...args) => {
+    if (typeof args[0] === 'string' && /findDOMNode is deprecated/.test(args[0])) return;
+    originalError(...args);
+  };
+}
+
 export default function RootLayout() {
   useFrameworkReady();
+  usePushNotifications();
 
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular,

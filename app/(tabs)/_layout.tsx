@@ -66,6 +66,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="personal-data"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' }, // Opcional: esconde a tab bar nesta tela
+        }}
+      />
     </Tabs>
   );
 }

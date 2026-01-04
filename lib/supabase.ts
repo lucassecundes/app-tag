@@ -1,4 +1,4 @@
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
@@ -9,22 +9,31 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
 // Adaptador de armazenamento seguro para evitar erros em ambientes SSR/Build
 const SafeStorage = {
   getItem: (key: string) => {
-    if (typeof window !== 'undefined') {
-      return AsyncStorage.getItem(key);
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+      return null;
     }
-    return Promise.resolve(null);
+    return AsyncStorage.getItem(key);
   },
   setItem: (key: string, value: string) => {
-    if (typeof window !== 'undefined') {
-      return AsyncStorage.setItem(key, value);
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, value);
+        return;
+      }
     }
-    return Promise.resolve();
+    return AsyncStorage.setItem(key, value);
   },
   removeItem: (key: string) => {
-    if (typeof window !== 'undefined') {
-      return AsyncStorage.removeItem(key);
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(key);
+        return;
+      }
     }
-    return Promise.resolve();
+    return AsyncStorage.removeItem(key);
   },
 };
 

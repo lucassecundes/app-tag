@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { MapView, Camera, PointAnnotation, StyleURL, ShapeSource, CircleLayer, FillLayer, LineLayer } from '../../components/ExternalMap';
-import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock } from 'lucide-react-native';
+import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock, X } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
@@ -68,6 +68,12 @@ export default function DeviceDetailScreen() {
   
   const [alertaMovimento, setAlertaMovimento] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  
+  // Schedule Modal State
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleStart, setScheduleStart] = useState('22:00');
+  const [scheduleEnd, setScheduleEnd] = useState('06:00');
+  const [movimentoSchedule, setMovimentoSchedule] = useState<{start: string, end: string} | null>(null);
 
   const cameraRef = useRef<any>(null);
 
@@ -158,6 +164,11 @@ export default function DeviceDetailScreen() {
     }
 
     setAlertaMovimento(data.alerta_movimento || false);
+    if (data.movimento_hora_inicio && data.movimento_hora_fim) {
+      setMovimentoSchedule({ start: data.movimento_hora_inicio, end: data.movimento_hora_fim });
+      setScheduleStart(data.movimento_hora_inicio);
+      setScheduleEnd(data.movimento_hora_fim);
+    }
 
     if (data.ultima_lat && data.ultima_lng) {
       const lat = parseFloat(data.ultima_lat);
@@ -177,7 +188,7 @@ export default function DeviceDetailScreen() {
   }, [alertaCerca, cercaCenter]);
 
   const toggleMapStyle = () => {
-    setMapStyle(prev => prev === StyleURL.Dark ? StyleURL.Satellite : StyleURL.Dark);
+    setMapStyle((prev: string) => prev === StyleURL.Dark ? StyleURL.Satellite : StyleURL.Dark);
   };
 
   const openStreetView = () => {
@@ -197,6 +208,12 @@ export default function DeviceDetailScreen() {
   };
 
   const toggleAlert = async (type: 'cerca' | 'movimento') => {
+    if (type === 'movimento' && !alertaMovimento) {
+      // Se for ativar movimento, abre modal primeiro
+      setShowScheduleModal(true);
+      return;
+    }
+
     setLoadingAlerts(true);
     try {
       const updates: any = {};
@@ -212,12 +229,9 @@ export default function DeviceDetailScreen() {
         }
         setAlertaCerca(newState);
       } else {
-        const newState = !alertaMovimento;
+        // Desativar movimento
+        const newState = false;
         updates.alerta_movimento = newState;
-        if (newState) {
-          updates.movimento_lat = currentLocation.lat;
-          updates.movimento_lng = currentLocation.lng;
-        }
         setAlertaMovimento(newState);
       }
 
@@ -232,7 +246,45 @@ export default function DeviceDetailScreen() {
       console.error('Erro ao atualizar alerta:', error);
       Alert.alert('Erro', 'Falha ao atualizar configuração de alerta.');
       if (type === 'cerca') setAlertaCerca(!alertaCerca);
-      else setAlertaMovimento(!alertaMovimento);
+      // else setAlertaMovimento(!alertaMovimento); // Movimento só desativa aqui
+    } finally {
+      setLoadingAlerts(false);
+    }
+  };
+
+  const confirmSchedule = async () => {
+    // Validação básica HH:mm
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(scheduleStart) || !timeRegex.test(scheduleEnd)) {
+      Alert.alert('Formato Inválido', 'Use o formato HH:mm (ex: 22:00)');
+      return;
+    }
+
+    setLoadingAlerts(true);
+    setShowScheduleModal(false);
+    
+    try {
+      const updates = {
+        alerta_movimento: true,
+        movimento_lat: currentLocation.lat,
+        movimento_lng: currentLocation.lng,
+        movimento_hora_inicio: scheduleStart,
+        movimento_hora_fim: scheduleEnd
+      };
+
+      const { error } = await supabase
+        .from('tags')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setAlertaMovimento(true);
+      setMovimentoSchedule({ start: scheduleStart, end: scheduleEnd });
+
+    } catch (error: any) {
+      console.error('Erro ao ativar alerta de movimento:', error);
+      Alert.alert('Erro', 'Falha ao ativar alerta de movimento.');
     } finally {
       setLoadingAlerts(false);
     }
@@ -391,7 +443,63 @@ export default function DeviceDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Bottom Sheet */}
+      {/* Modal de Agendamento */}
+      <Modal
+        visible={showScheduleModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowScheduleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Configurar Alerta de Movimento</Text>
+              <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
+                <X size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalDesc}>
+              Defina o horário em que o movimento não é permitido (ex: noite).
+              Se a tag sair do raio de 100m neste horário, um alerta será gerado.
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Início</Text>
+                <TextInput
+                  style={styles.input}
+                  value={scheduleStart}
+                  onChangeText={setScheduleStart}
+                  placeholder="22:00"
+                  placeholderTextColor="#999"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Fim</Text>
+                <TextInput
+                  style={styles.input}
+                  value={scheduleEnd}
+                  onChangeText={setScheduleEnd}
+                  placeholder="06:00"
+                  placeholderTextColor="#999"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                />
+              </View>
+            </View>
+
+            <Button 
+              title="ATIVAR MONITORAMENTO" 
+              onPress={confirmSchedule}
+              loading={loadingAlerts}
+            />
+          </View>
+        </View>
+      </Modal>
+
       <GestureDetector gesture={gesture}>
         <Animated.View style={[styles.bottomSheet, rBottomSheetStyle]}>
           <View style={styles.dragHandleContainer}>
@@ -459,7 +567,11 @@ export default function DeviceDetailScreen() {
                   </View>
                 </View>
                 <Text style={[styles.alertTitle, alertaMovimento && styles.alertTitleActive]}>Movimento</Text>
-                <Text style={styles.alertDesc}>Fora de Horário</Text>
+                <Text style={styles.alertDesc}>
+                  {alertaMovimento && movimentoSchedule 
+                    ? `${movimentoSchedule.start} - ${movimentoSchedule.end}`
+                    : 'Fora de Horário'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -724,5 +836,60 @@ const styles = StyleSheet.create({
   },
   toggleIcon: {
     // 
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.text,
+  },
+  modalDesc: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.textSecondary,
+    marginBottom: 24,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 24,
+  },
+  inputGroup: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    padding: 12,
+    color: Colors.text,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
