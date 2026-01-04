@@ -1,0 +1,168 @@
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Colors } from '../../constants/Colors';
+import { useAuth } from '../../context/AuthContext';
+import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone } from 'lucide-react-native';
+import { Button } from '../../components/ui/Button';
+import { router } from 'expo-router';
+
+export default function ProfileScreen() {
+  const { user, signOut } = useAuth();
+
+  const menuItems = [
+    { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => {} },
+    // Ação atualizada para navegar para a tela de dispositivos
+    { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
+    { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => {} },
+    { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => {} },
+    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => {} },
+  ];
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <View style={styles.avatarContainer}>
+          <Text style={styles.avatarText}>
+            {user?.email?.substring(0, 2).toUpperCase() || 'US'}
+          </Text>
+        </View>
+        <Text style={styles.userName}>{user?.user_metadata?.full_name || 'Usuário'}</Text>
+        <Text style={styles.userEmail}>{user?.email}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Conta</Text>
+        <View style={styles.menuContainer}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={[
+                styles.menuItem,
+                index === menuItems.length - 1 && styles.lastMenuItem
+              ]}
+              onPress={item.action}
+            >
+              <View style={styles.menuItemLeft}>
+                <View style={styles.iconBox}>
+                  {item.icon}
+                </View>
+                <Text style={styles.menuItemLabel}>{item.label}</Text>
+              </View>
+              <ChevronRight size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <Button 
+        title="Sair da Conta" 
+        onPress={signOut} 
+        variant="outline"
+        icon={<LogOut size={20} color={Colors.primary} />}
+        style={styles.logoutButton}
+      />
+      
+      <Text style={styles.versionText}>Versão 1.0.0</Text>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  content: {
+    paddingTop: 60,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surfaceHighlight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  avatarText: {
+    fontSize: 24,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.primary,
+  },
+  userName: {
+    fontSize: 24,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.textSecondary,
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.textSecondary,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  menuContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceHighlight,
+  },
+  lastMenuItem: {
+    borderBottomWidth: 0,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceHighlight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuItemLabel: {
+    fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.text,
+  },
+  logoutButton: {
+    marginTop: 'auto',
+    marginBottom: 24,
+  },
+  versionText: {
+    textAlign: 'center',
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
+  },
+});
