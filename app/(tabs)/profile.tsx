@@ -50,8 +50,8 @@ export default function ProfileScreen() {
     { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => router.push('/(tabs)/personal-data') },
     // Ação atualizada para navegar para a tela de dispositivos
     { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
-    { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => {} },
-    { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => {} },
+    { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => router.push('/(tabs)/security') },
+    { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => router.push('/(tabs)/settings') },
     { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => {} },
   ];
 

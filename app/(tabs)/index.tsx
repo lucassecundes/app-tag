@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Plus, Smartphone, Tag, MapPin, AlertCircle, Car, Truck, Bike, Bus, Package } from 'lucide-react-native';
+import { Plus, Smartphone, Tag, MapPin, AlertCircle, Car, Truck, Bike, Bus, Package, Bell, ShieldAlert } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -124,7 +124,7 @@ export default function DeviceListScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.cardIcon}>
-          {getIcon(item.type)}
+          {getIcon(item.icone)}
         </View>
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{item.nome || 'Dispositivo sem nome'}</Text>
@@ -143,8 +143,25 @@ export default function DeviceListScreen() {
             </Text>
           </View>
         </View>
-        <View style={styles.actionIcon}>
-          <MapPin size={20} color={Colors.primary} />
+        
+        <View style={styles.rightActions}>
+          {(item.alerta_cerca || item.alerta_movimento) && (
+            <View style={styles.alertsContainer}>
+              {item.alerta_cerca && (
+                <View style={[styles.alertBadge, { backgroundColor: 'rgba(255, 68, 68, 0.1)' }]}>
+                  <ShieldAlert size={16} color={Colors.error} />
+                </View>
+              )}
+              {item.alerta_movimento && (
+                <View style={[styles.alertBadge, { backgroundColor: 'rgba(255, 187, 51, 0.1)' }]}>
+                  <Bell size={16} color={Colors.warning} />
+                </View>
+              )}
+            </View>
+          )}
+          <View style={styles.actionIcon}>
+            <MapPin size={20} color={Colors.primary} />
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -358,5 +375,22 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  alertsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  alertBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

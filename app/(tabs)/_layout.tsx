@@ -73,6 +73,20 @@ export default function TabLayout() {
           tabBarStyle: { display: 'none' }, // Opcional: esconde a tab bar nesta tela
         }}
       />
+      <Tabs.Screen
+        name="security"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
     </Tabs>
   );
 }
