@@ -16,8 +16,8 @@ Notifications.setNotificationHandler({
 export function usePushNotifications() {
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>('');
   const [notification, setNotification] = useState<Notifications.Notification | undefined>(undefined);
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   async function registerForPushNotificationsAsync() {
     let token;
@@ -41,16 +41,11 @@ export function usePushNotifications() {
       }
       
       if (finalStatus !== 'granted') {
-        alert('Falha ao obter permissão para notificações push!');
+        // alert('Falha ao obter permissão para notificações push!');
         return;
       }
       
-      // Learn more about projectId:
-      // https://docs.expo.dev/push-notifications/push-notifications-setup/#configure-projectid
-      // token = (await Notifications.getExpoPushTokenAsync({ projectId: 'your-project-id' })).data;
-      
       try {
-        // Tentativa padrão sem project ID (funciona em desenvolvimento na maioria dos casos)
         token = (await Notifications.getExpoPushTokenAsync()).data;
       } catch (e) {
         console.log('Erro ao pegar token:', e);
@@ -58,7 +53,6 @@ export function usePushNotifications() {
       
       console.log('Expo Push Token:', token);
     } else {
-      // alert('Must use physical device for Push Notifications');
       console.log('Emulador detectado: Notificações push não funcionam completamente em emuladores.');
     }
 
@@ -82,24 +76,15 @@ export function usePushNotifications() {
     });
 
     return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
   const saveTokenToSupabase = async (token: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // Salva o token na tabela usuario se existir coluna, ou cria uma tabela de tokens
-      // Por enquanto, apenas logamos, pois precisamos saber onde salvar
       console.log('Token pronto para salvar no Supabase:', token);
-      
-      // Exemplo de update se houver coluna:
-      // await supabase.from('usuario').update({ push_token: token }).eq('auth_user_id', user.id);
     }
   };
 

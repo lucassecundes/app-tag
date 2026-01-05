@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
 
+import { translateSupabaseError } from '../../lib/errorTranslator';
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +27,7 @@ export default function LoginScreen() {
     });
 
     if (error) {
-      Alert.alert('Erro no Login', error.message);
+      Alert.alert('Erro no Login', translateSupabaseError(error.message));
     } else {
       router.replace('/(tabs)');
     }
@@ -76,19 +78,6 @@ export default function LoginScreen() {
             loading={loading}
             icon={<LogIn size={20} color={Colors.white} />}
             style={styles.loginButton}
-          />
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OU</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <Button 
-            title="Entrar com WhatsApp" 
-            onPress={() => {}} 
-            variant="secondary"
-            style={styles.whatsappButton}
           />
 
           <View style={styles.footer}>
@@ -163,25 +152,6 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginBottom: 24,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    color: Colors.textSecondary,
-    paddingHorizontal: 16,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-  },
-  whatsappButton: {
-    marginBottom: 32,
   },
   footer: {
     flexDirection: 'row',

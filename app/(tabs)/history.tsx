@@ -4,10 +4,13 @@ import { Colors } from '../../constants/Colors';
 import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { usePremium } from '../../context/PremiumContext';
 import { format, parseISO, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Button } from '../../components/ui/Button';
+import { PremiumBanner } from '../../components/PremiumBanner';
 import { MapView, Camera, ShapeSource, LineLayer, CircleLayer, StyleURL } from '../../components/ExternalMap';
 
 const { height } = Dimensions.get('window');
@@ -16,6 +19,7 @@ type FilterType = 'today' | 'yesterday' | 'week' | 'month' | 'all';
 
 export default function HistoryScreen() {
   const { user } = useAuth();
+  const { isPremium } = usePremium();
   const params = useLocalSearchParams();
   const filterTagId = params.tagId as string;
 
@@ -55,6 +59,12 @@ export default function HistoryScreen() {
         query = query.eq('tag_id', filterTagId);
       }
 
+      // Restrição para usuários não-premium: Apenas 30 dias
+      if (!isPremium) {
+        const thirtyDaysAgo = subDays(new Date(), 30);
+        query = query.gte('data_hora', thirtyDaysAgo.toISOString());
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -78,13 +88,30 @@ export default function HistoryScreen() {
   );
 
   const applyFilter = (filter: FilterType, dataToFilter = history) => {
-    setActiveFilter(filter);
-    
-    if (filter === 'all') {
-      setFilteredHistory(dataToFilter);
+    // Verificação Premium para filtro customizado
+    if (filter === 'custom' && !isPremium) {
+      Alert.alert(
+        'Recurso Premium',
+        'O filtro personalizado por data é exclusivo para assinantes Premium.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Assinar Agora', onPress: () => {
+            setShowFilterModal(false);
+            router.push('/subscription');
+          }}
+        ]
+      );
       return;
     }
 
+    if (filter === 'custom' && (!customRange)) {
+        // Se for custom mas não tiver range definido, abrimos o picker (lógica na UI)
+        // Aqui apenas setamos o filtro ativo se já tiver range
+        return; 
+    }
+
+    setActiveFilter(filter);
+    
     const now = new Date();
     let start: Date;
     let end: Date = endOfDay(now);
@@ -104,8 +131,16 @@ export default function HistoryScreen() {
       case 'month':
         start = subDays(now, 30);
         break;
+      case 'custom':
+        if (customRange) {
+            start = startOfDay(customRange.start);
+            end = endOfDay(customRange.end);
+        } else {
+            start = startOfDay(now); // Fallback
+        }
+        break;
       default:
-        start = new Date(0); // Início dos tempos
+        start = startOfDay(now);
     }
 
     const filtered = dataToFilter.filter(item => {
@@ -114,6 +149,26 @@ export default function HistoryScreen() {
     });
 
     setFilteredHistory(filtered);
+  };
+
+  const handleCustomDateConfirm = () => {
+      // Validação de intervalo de 30 dias
+      const diffTime = Math.abs(tempDateEnd.getTime() - tempDateStart.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+      if (diffDays > 30) {
+          Alert.alert('Limite Excedido', 'O intervalo máximo permitido é de 30 dias.');
+          return;
+      }
+
+      if (tempDateStart > tempDateEnd) {
+          Alert.alert('Data Inválida', 'A data inicial não pode ser maior que a final.');
+          return;
+      }
+
+      setCustomRange({ start: tempDateStart, end: tempDateEnd });
+      applyFilter('custom'); // Re-aplica com o novo range
+      setShowFilterModal(false);
   };
 
   const onRefresh = () => {
@@ -175,7 +230,12 @@ export default function HistoryScreen() {
       case 'yesterday': return 'Ontem';
       case 'week': return 'Últimos 7 dias';
       case 'month': return 'Últimos 30 dias';
-      default: return 'Todo o período';
+      case 'custom': 
+        if (customRange) {
+            return `${format(customRange.start, 'dd/MM')} - ${format(customRange.end, 'dd/MM')}`;
+        }
+        return 'Personalizado';
+      default: return 'Hoje';
     }
   };
 
@@ -242,6 +302,8 @@ export default function HistoryScreen() {
       </View>
 
       {/* Conteúdo Principal */}
+      {!isPremium && <PremiumBanner message="Histórico limitado a 30 dias. Veja tudo!" />}
+      
       {loading && !refreshing ? (
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={Colors.primary} />
@@ -620,6 +682,41 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   modalFooter: {
-    marginTop: 8,
+    marginTop: 16,
+  },
+  customDateContainer: {
+      backgroundColor: Colors.background,
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: Colors.border,
+  },
+  customDateLabel: {
+      fontSize: 12,
+      fontFamily: 'Montserrat_600SemiBold',
+      color: Colors.textSecondary,
+      marginBottom: 12,
+  },
+  dateInputsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+  },
+  dateInput: {
+      flex: 1,
+      backgroundColor: Colors.surface,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      alignItems: 'center',
+  },
+  dateInputText: {
+      color: Colors.text,
+      fontFamily: 'Poppins_500Medium',
+      fontSize: 14,
   },
 });

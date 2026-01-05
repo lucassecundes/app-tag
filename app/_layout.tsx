@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '../hooks/useFrameworkReady';
 import { AuthProvider } from '../context/AuthContext';
+import { PremiumProvider } from '../context/PremiumContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useFonts, Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
 import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold } from '@expo-google-fonts/poppins';
@@ -47,14 +48,17 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="devices" />
-          <Stack.Screen name="device-detail/[id]" />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="light" backgroundColor={Colors.background} />
+        <PremiumProvider>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="devices" />
+            <Stack.Screen name="device-detail/[id]" />
+            <Stack.Screen name="+not-found" />
+            <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
+          </Stack>
+          <StatusBar style="light" backgroundColor={Colors.background} />
+        </PremiumProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

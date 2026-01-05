@@ -10,7 +10,11 @@ let Mapbox: any = {
   Camera: () => null,
   PointAnnotation: () => null,
   Callout: () => null,
-  StyleURL: { Dark: 'mapbox://styles/mapbox/dark-v10', Satellite: 'mapbox://styles/mapbox/satellite-v9' },
+  StyleURL: { 
+    Dark: 'mapbox://styles/mapbox/dark-v10', 
+    Satellite: 'mapbox://styles/mapbox/satellite-v9',
+    SatelliteStreet: 'mapbox://styles/mapbox/satellite-streets-v12' 
+  },
   UserLocation: () => null,
   LocationPuck: () => null,
   ShapeSource: () => null,

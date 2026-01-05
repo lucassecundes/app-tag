@@ -8,6 +8,9 @@ import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import { usePremium } from '../../context/PremiumContext';
+import { PremiumBadge } from '../../components/PremiumBadge';
+import { translateSupabaseError } from '../../lib/errorTranslator';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 100; // Limite superior (não sobe tudo)
@@ -49,6 +52,7 @@ const createGeoJSONCircle = (center: [number, number], radiusInMeters: number, p
 export default function DeviceDetailScreen() {
   const params = useLocalSearchParams();
   const { id } = params;
+  const { isPremium } = usePremium();
   
   const [nome, setNome] = useState(params.nome as string || 'Dispositivo');
   const [type, setType] = useState('car');
@@ -188,7 +192,7 @@ export default function DeviceDetailScreen() {
   }, [alertaCerca, cercaCenter]);
 
   const toggleMapStyle = () => {
-    setMapStyle((prev: string) => prev === StyleURL.Dark ? StyleURL.Satellite : StyleURL.Dark);
+    setMapStyle((prev: string) => prev === StyleURL.Dark ? StyleURL.SatelliteStreet : StyleURL.Dark);
   };
 
   const openStreetView = () => {
@@ -208,6 +212,19 @@ export default function DeviceDetailScreen() {
   };
 
   const toggleAlert = async (type: 'cerca' | 'movimento') => {
+    // Restrição Premium
+    if (!isPremium) {
+      Alert.alert(
+        'Recurso Premium',
+        'Assine o Premium para ativar alertas de segurança e monitoramento.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Assinar Agora', onPress: () => router.push('/subscription') }
+        ]
+      );
+      return;
+    }
+
     if (type === 'movimento' && !alertaMovimento) {
       // Se for ativar movimento, abre modal primeiro
       setShowScheduleModal(true);
@@ -323,7 +340,7 @@ export default function DeviceDetailScreen() {
       Alert.alert('Simulação', 'Dispositivo movido. Verifique se saiu da zona segura no mapa.');
     } catch (e: any) {
       console.error('Erro na simulação:', e);
-      Alert.alert('Erro', e.message);
+      Alert.alert('Erro', translateSupabaseError(e.message));
     } finally {
       setSimulating(false);
     }
@@ -537,16 +554,28 @@ export default function DeviceDetailScreen() {
             <Text style={styles.sectionTitle}>Monitoramento e Segurança</Text>
             <View style={styles.alertsContainer}>
               <TouchableOpacity 
-                style={[styles.alertCard, alertaCerca && styles.alertCardActive]}
+                style={[
+                  styles.alertCard, 
+                  alertaCerca && styles.alertCardActive,
+                  !isPremium && styles.alertCardDisabled
+                ]}
                 onPress={() => toggleAlert('cerca')}
                 disabled={loadingAlerts}
               >
                 <View style={styles.alertHeader}>
-                  <View style={[styles.alertIconBox, alertaCerca && styles.alertIconBoxActive]}>
+                  <View style={[
+                    styles.alertIconBox, 
+                    alertaCerca && styles.alertIconBoxActive,
+                    !isPremium && styles.alertIconBoxDisabled
+                  ]}>
                     <Shield size={20} color={alertaCerca ? Colors.white : Colors.textSecondary} />
                   </View>
                   <View style={styles.toggleIcon}>
-                    {alertaCerca ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
+                    {!isPremium ? (
+                      <PremiumBadge size="small" />
+                    ) : (
+                      alertaCerca ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />
+                    )}
                   </View>
                 </View>
                 <Text style={[styles.alertTitle, alertaCerca && styles.alertTitleActive]}>Zona Segura</Text>
@@ -554,16 +583,28 @@ export default function DeviceDetailScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.alertCard, alertaMovimento && styles.alertCardActive]}
+                style={[
+                  styles.alertCard, 
+                  alertaMovimento && styles.alertCardActive,
+                  !isPremium && styles.alertCardDisabled
+                ]}
                 onPress={() => toggleAlert('movimento')}
                 disabled={loadingAlerts}
               >
                 <View style={styles.alertHeader}>
-                  <View style={[styles.alertIconBox, alertaMovimento && styles.alertIconBoxActive]}>
+                  <View style={[
+                    styles.alertIconBox, 
+                    alertaMovimento && styles.alertIconBoxActive,
+                    !isPremium && styles.alertIconBoxDisabled
+                  ]}>
                     <Clock size={20} color={alertaMovimento ? Colors.white : Colors.textSecondary} />
                   </View>
                   <View style={styles.toggleIcon}>
-                    {alertaMovimento ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
+                    {!isPremium ? (
+                      <PremiumBadge size="small" />
+                    ) : (
+                      alertaMovimento ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />
+                    )}
                   </View>
                 </View>
                 <Text style={[styles.alertTitle, alertaMovimento && styles.alertTitleActive]}>Movimento</Text>

@@ -2,7 +2,7 @@ import { Tabs, Redirect } from 'expo-router';
 import { Map, Clock, Bell, User } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 
 export default function TabLayout() {
   const { session, isLoading } = useAuth();
@@ -26,8 +26,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.border,
-          height: 60,
-          paddingBottom: 8,
+          height: Platform.OS === 'android' ? 70 : 80,
+          paddingBottom: Platform.OS === 'android' ? 12 : 24,
           paddingTop: 8,
         },
         tabBarActiveTintColor: Colors.primary,
@@ -35,6 +35,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontFamily: 'Poppins_500Medium',
           fontSize: 10,
+          paddingBottom: Platform.OS === 'android' ? 4 : 0,
         },
       }}
     >

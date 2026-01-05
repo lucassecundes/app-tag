@@ -1,23 +1,83 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { AlertTriangle, Battery, Shield, WifiOff } from 'lucide-react-native';
-
-const MOCK_ALERTS = [
-  { id: '1', type: 'geofence', title: 'Saiu da Área Segura', message: 'Veículo saiu da Zona Sul', time: '10 min atrás' },
-  { id: '2', type: 'movement', title: 'Movimento Detectado', message: 'Veículo em movimento fora do horário', time: '1h atrás' },
-  { id: '3', type: 'disconnect', title: 'Dispositivo Desconectado', message: 'Perda de sinal GPS', time: '2h atrás' },
-  { id: '4', type: 'battery', title: 'Bateria Fraca', message: 'Nível de bateria abaixo de 15%', time: 'Ontem' },
-];
+import { AlertTriangle, Battery, Shield, WifiOff, Bell, MapPin } from 'lucide-react-native';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { usePremium } from '../../context/PremiumContext';
+import { PremiumBadge } from '../../components/PremiumBadge';
+import { PremiumBanner } from '../../components/PremiumBanner';
+import { router, useFocusEffect } from 'expo-router';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function AlertsScreen() {
+  const { user } = useAuth();
+  const { isPremium } = usePremium();
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAlerts = async () => {
+    if (!user) return;
+    
+    try {
+      // Busca notificações do banco de dados (tabela 'notificacoes' a ser criada/usada)
+      // Como não temos a tabela ainda, vamos simular que buscamos vazio ou da tabela existente se houver
+      // Vamos assumir uma estrutura padrão para quando o backend gerar
+      
+      const { data, error } = await supabase
+        .from('notificacoes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error && error.code !== 'PGRST116') { // Ignora erro se tabela não existir
+         console.log('Erro ao buscar notificações:', error);
+      }
+      
+      setAlerts(data || []);
+    } catch (error) {
+      console.log('Erro:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchAlerts();
+    }, [user])
+  );
+
+  const handleAlertPress = (alert: any) => {
+    if (alert.latitude && alert.longitude) {
+      router.push({
+        pathname: '/device-detail/[id]',
+        params: { 
+          id: alert.tag_id,
+          lat: alert.latitude,
+          lng: alert.longitude,
+          focusAlert: 'true' // Parâmetro para focar no alerta
+        }
+      });
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'geofence': return <Shield size={24} color={Colors.primary} />;
       case 'movement': return <AlertTriangle size={24} color={Colors.warning} />;
       case 'disconnect': return <WifiOff size={24} color={Colors.textSecondary} />;
       case 'battery': return <Battery size={24} color={Colors.error} />;
-      default: return <AlertTriangle size={24} color={Colors.text} />;
+      default: return <Bell size={24} color={Colors.text} />;
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: ptBR });
+    } catch (e) {
+      return 'Recentemente';
     }
   };
 
@@ -27,23 +87,54 @@ export default function AlertsScreen() {
         <Text style={styles.title}>Notificações</Text>
       </View>
 
-      <FlatList
-        data={MOCK_ALERTS}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <View style={styles.alertItem}>
-            <View style={styles.iconContainer}>
-              {getIcon(item.type)}
+      {!isPremium && <PremiumBanner message="Receba alertas ilimitados e prioridade." />}
+
+      {loading ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={alerts}
+          keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <Bell size={48} color={Colors.textSecondary} />
+              </View>
+              <Text style={styles.emptyTitle}>Tudo tranquilo por aqui</Text>
+              <Text style={styles.emptyText}>
+                Você não possui novas notificações no momento.
+              </Text>
             </View>
-            <View style={styles.alertContent}>
-              <Text style={styles.alertTitle}>{item.title}</Text>
-              <Text style={styles.alertMessage}>{item.message}</Text>
-              <Text style={styles.alertTime}>{item.time}</Text>
-            </View>
-          </View>
-        )}
-      />
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.alertItem}
+              onPress={() => handleAlertPress(item)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                {getIcon(item.type)}
+              </View>
+              <View style={styles.alertContent}>
+                <View style={styles.alertHeader}>
+                  <Text style={styles.alertTitle}>{item.title}</Text>
+                  {!isPremium && <PremiumBadge size="small" style={{ marginLeft: 8 }} />}
+                </View>
+                <Text style={styles.alertMessage}>{item.message}</Text>
+                <Text style={styles.alertTime}>{formatTime(item.created_at)}</Text>
+              </View>
+              {(item.latitude && item.longitude) && (
+                <View style={styles.mapAction}>
+                  <MapPin size={16} color={Colors.primary} />
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -88,11 +179,15 @@ const styles = StyleSheet.create({
   alertContent: {
     flex: 1,
   },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   alertTitle: {
     color: Colors.text,
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 16,
-    marginBottom: 4,
   },
   alertMessage: {
     color: Colors.textSecondary,
@@ -104,5 +199,45 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
+  },
+  centerState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 32,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surfaceHighlight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  mapAction: {
+    padding: 8,
+    backgroundColor: 'rgba(255, 122, 0, 0.1)',
+    borderRadius: 8,
+    marginLeft: 8,
   },
 });

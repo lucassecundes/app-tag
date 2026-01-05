@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
 
+import { translateSupabaseError } from '../../lib/errorTranslator';
+
 export default function RegisterScreen() {
   const params = useLocalSearchParams();
   const tagId = params.tagId as string;
@@ -36,13 +38,33 @@ export default function RegisterScreen() {
     });
 
     if (authError) {
-      Alert.alert('Erro no Cadastro', authError.message);
+      Alert.alert('Erro no Cadastro', translateSupabaseError(authError.message));
       setLoading(false);
       return;
     }
 
     if (authData.user) {
-      // 2. Vincular a TAG ao novo usuário na tabela 'tags'
+      // 2. Registrar Aceite dos Termos
+      const { error: termError } = await supabase
+        .from('term_acceptances')
+        .insert({
+          user_id: authData.user.id,
+          term_version: '1.0.0', // Versão inicial
+          term_checksum: 'manual-check', // Placeholder, ideal seria hash do texto
+          accepted_at: new Date().toISOString(),
+          metadata: {
+            device: Platform.OS,
+            app_version: '1.0.0',
+            ip_address: 'mobile-app'
+          }
+        });
+
+      if (termError) {
+        console.error('Erro ao registrar aceite:', termError);
+        // Não bloqueamos o fluxo, mas logamos o erro
+      }
+
+      // 3. Vincular a TAG ao novo usuário na tabela 'tags'
       if (tagId) {
         const { error: deviceError } = await supabase
           .from('tags')
@@ -51,7 +73,7 @@ export default function RegisterScreen() {
             // Alterado de name para nome
             nome: `TAG ${tagId}`,
             codigo: tagId,
-            type: 'car',
+            icone: 'car',
             created_at: new Date().toISOString(),
           });
 
@@ -124,7 +146,14 @@ export default function RegisterScreen() {
           />
 
           <Text style={styles.termsText}>
-            Ao se cadastrar, você concorda com nossos <Text style={styles.linkText}>Termos de Uso</Text> e <Text style={styles.linkText}>Política de Privacidade</Text>.
+            Ao se cadastrar, você concorda com nossos{' '}
+            <Text style={styles.linkText} onPress={() => router.push('/(auth)/terms')}>
+              Termos de Uso
+            </Text>{' '}
+            e{' '}
+            <Text style={styles.linkText} onPress={() => router.push('/(auth)/privacy')}>
+              Política de Privacidade
+            </Text>.
           </Text>
 
           <Button 

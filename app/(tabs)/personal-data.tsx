@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platfo
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { translateSupabaseError } from '../../lib/errorTranslator';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft, User, Mail, Phone, Save } from 'lucide-react-native';
@@ -70,7 +71,7 @@ export default function PersonalDataScreen() {
       Alert.alert('Sucesso', 'Dados atualizados com sucesso!');
       router.back();
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Falha ao atualizar dados.');
+      Alert.alert('Erro', translateSupabaseError(error.message) || 'Falha ao atualizar dados.');
     } finally {
       setLoading(false);
     }

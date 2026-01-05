@@ -6,6 +6,7 @@ import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
+import { translateSupabaseError } from '../../lib/errorTranslator';
 
 export default function DeviceListScreen() {
   const { user } = useAuth();
@@ -28,7 +29,7 @@ export default function DeviceListScreen() {
 
       if (error) {
         console.error('Erro Supabase:', error);
-        setErrorMsg(error.message);
+        setErrorMsg(translateSupabaseError(error.message));
         throw error;
       }
 
