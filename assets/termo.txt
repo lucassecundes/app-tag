@@ -1,0 +1,82 @@
+TERMO DE ADESÃO E ISENÇÃO DE RESPONSABILIDADE – TAGPRO+ / BESAT RASTREAMENTO
+
+Este Termo estabelece as condições de uso do serviço TAGPRO+ e deve ser lido atentamente pelo CLIENTE.
+
+Ao prosseguir com o cadastro e marcar a opção “Li e aceito os termos”, o CLIENTE declara que leu, entendeu e concorda com as cláusulas abaixo, aderindo ao presente Termo de forma livre, informada e inequívoca, conforme previsto na legislação brasileira.
+
+1. OBJETO
+
+O presente Termo tem por objeto formalizar a adesão do CLIENTE ao uso do dispositivo de rastreamento TAGPRO+, fornecido pela empresa BESAT SOLUÇÕES EM RASTREAMENTO LTDA, inscrita no CNPJ nº 32.198.464/0001-40, com sede na cidade de Campo Grande/MS.
+
+A TAGPRO+ é um equipamento eletrônico que utiliza tecnologia GPS e rede móvel (GSM/GPRS/4G) para localizar e monitorar veículos, objetos e bens móveis, disponibilizando essas informações por meio de aplicativo e/ou plataforma digital.
+
+2. NATUREZA DO SERVIÇO
+
+O CLIENTE reconhece que:
+
+- O serviço prestado pela BESAT possui natureza exclusivamente informativa e tecnológica, limitado ao fornecimento de dados de geolocalização;
+- O dispositivo TAGPRO+ não substitui sistemas de segurança convencionais, não constitui seguro veicular ou patrimonial e não garante a recuperação de bens em caso de furto, roubo ou sinistro;
+- O correto funcionamento do serviço está condicionado à cobertura de sinal de GPS e rede móvel.
+
+3. ISENÇÃO DE RESPONSABILIDADE
+
+A BESAT não se responsabiliza, em nenhuma hipótese, por:
+
+- Danos materiais ou morais decorrentes de furto, roubo, acidente ou sinistro envolvendo os bens monitorados;
+- Falhas causadas por ausência de sinal de GPS/GSM, interferências técnicas, áreas sem cobertura, uso inadequado ou instalação incorreta;
+- Inconsistências, atrasos ou interrupções na transmissão dos dados;
+- Ações policiais ou judiciais relacionadas à recuperação de veículos.
+
+O CLIENTE reconhece que o dispositivo TAGPRO+ é ferramenta auxiliar, devendo ser utilizado em conjunto com outras medidas de segurança.
+
+4. RESPONSABILIDADE DO CLIENTE
+
+Constituem obrigações do CLIENTE:
+
+- Ativar corretamente o dispositivo e realizar a instalação conforme orientações técnicas;
+- Manter a confidencialidade das credenciais de acesso (login e senha);
+- Utilizar o aplicativo conforme as instruções da BESAT;
+- Garantir a veracidade das informações fornecidas no cadastro.
+
+5. GARANTIA
+
+O equipamento TAGPRO+ possui garantia legal de 14 (quatorze) dias a partir do recebimento, limitada a defeitos de fabricação.
+
+Ficam excluídos da garantia:
+
+- Danos causados por uso indevido, quedas, umidade, calor excessivo ou alterações não autorizadas.
+
+6. SUPORTE TÉCNICO
+
+O CLIENTE terá acesso a suporte técnico ilimitado, exclusivamente pelos canais oficiais da BESAT, para orientações sobre instalação, operação e dúvidas técnicas.
+
+7. LIMITAÇÕES TÉCNICAS
+
+O CLIENTE declara ciência de que o funcionamento do equipamento depende da disponibilidade de sinal de GPS e rede móvel, podendo apresentar falhas em túneis, subsolos, zonas rurais e áreas com baixa cobertura.
+
+8. NATUREZA CONTRATUAL E JURÍDICA
+
+Este termo não caracteriza contrato de seguro, nem impõe à BESAT qualquer obrigação de indenização.
+
+Ao aderir ao presente instrumento, o CLIENTE reconhece e aceita expressamente as limitações operacionais e jurídicas do serviço prestado, isentando a BESAT de qualquer responsabilidade civil, penal ou financeira sobre os bens monitorados.
+
+9. FORO
+
+Fica eleito o foro da Comarca de Campo Grande/MS, com renúncia de qualquer outro, por mais privilegiado que seja, para dirimir eventuais controvérsias decorrentes deste Termo.
+
+10. ACEITE ELETRÔNICO
+
+O CLIENTE manifesta sua aceitação livre, expressa e informada deste Termo por meio eletrônico, ao selecionar a opção “Li e aceito os termos” no momento do cadastro e ativação do serviço, nos termos da legislação civil e consumerista vigente.
+
+---
+
+QUADRO-RESUMO DO CONTRATO (Art. 54-A, §4º do CDC)
+
+Fornecedor: BESAT SOLUÇÕES EM RASTREAMENTO LTDA – CNPJ 32.198.464/0001-40
+Serviço Prestado: Monitoramento e rastreamento de veículos e bens móveis via GPS/GSM
+Natureza do Serviço: Informativa e tecnológica – não é seguro
+Garantia: 14 dias contra defeito de fabricação
+Responsabilidade da BESAT: Limitada à disponibilização dos dados de rastreamento
+Limitações: Depende de sinal GPS/GSM; falhas em áreas sem cobertura
+Aceite: Realizado eletronicamente no app
+Foro Competente: Comarca de Campo Grande/MS

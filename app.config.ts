@@ -63,7 +63,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         "RNMapboxMapsImpl": "mapbox",
         "RNMapboxMapsDownloadToken": process.env.MAPBOX_DOWNLOADS_TOKEN
       }
-    ]
+    ],
+    "@react-native-community/datetimepicker"
   ],
   experiments: {
     typedRoutes: true

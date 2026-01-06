@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Dimensions, Alert, Platform } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
@@ -15,7 +15,7 @@ import { MapView, Camera, ShapeSource, LineLayer, CircleLayer, StyleURL } from '
 
 const { height } = Dimensions.get('window');
 
-type FilterType = 'today' | 'yesterday' | 'week' | 'month' | 'all';
+type FilterType = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 
 export default function HistoryScreen() {
   const { user } = useAuth();
@@ -33,7 +33,14 @@ export default function HistoryScreen() {
   
   // Filter State
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('today');
+  const [customRange, setCustomRange] = useState<{start: Date, end: Date} | null>(null);
+
+  // Custom Date Picker State
+  const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+  const [tempDateStart, setTempDateStart] = useState(new Date());
+  const [tempDateEnd, setTempDateEnd] = useState(new Date());
   
   const cameraRef = useRef<any>(null);
 
@@ -133,8 +140,9 @@ export default function HistoryScreen() {
         break;
       case 'custom':
         if (customRange) {
-            start = startOfDay(customRange.start);
-            end = endOfDay(customRange.end);
+            // No modo custom, usamos o horário exato definido pelo usuário
+            start = customRange.start;
+            end = customRange.end;
         } else {
             start = startOfDay(now); // Fallback
         }
@@ -169,6 +177,46 @@ export default function HistoryScreen() {
       setCustomRange({ start: tempDateStart, end: tempDateEnd });
       applyFilter('custom'); // Re-aplica com o novo range
       setShowFilterModal(false);
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+      if (event.type === 'dismissed') {
+          setShowDatePicker(null);
+          return;
+      }
+      
+      const currentDate = selectedDate || (showDatePicker === 'start' ? tempDateStart : tempDateEnd);
+
+      if (Platform.OS === 'android') {
+          setShowDatePicker(null); // Fecha o picker atual
+          
+          if (pickerMode === 'date') {
+              // Se estava escolhendo data, salva e abre o de hora
+              if (showDatePicker === 'start') setTempDateStart(currentDate);
+              else setTempDateEnd(currentDate);
+              
+              setPickerMode('time');
+              // Pequeno delay para reabrir o picker no modo time
+              setTimeout(() => {
+                  setShowDatePicker(showDatePicker); // Reabre com o mesmo target
+              }, 100);
+          } else {
+              // Se estava escolhendo hora, finaliza
+              if (showDatePicker === 'start') setTempDateStart(currentDate);
+              else setTempDateEnd(currentDate);
+              setPickerMode('date'); // Reseta para o próximo uso
+          }
+      } else {
+          // iOS
+          if (showDatePicker === 'start') setTempDateStart(currentDate);
+          else setTempDateEnd(currentDate);
+          setShowDatePicker(null);
+      }
+  };
+
+  const openDatePicker = (target: 'start' | 'end') => {
+      setPickerMode('date'); // Sempre começa pela data
+      setShowDatePicker(target);
   };
 
   const onRefresh = () => {
@@ -405,7 +453,6 @@ export default function HistoryScreen() {
                 { id: 'yesterday', label: 'Ontem' },
                 { id: 'week', label: '7 Dias' },
                 { id: 'month', label: '30 Dias' },
-                { id: 'all', label: 'Tudo' },
               ].map((option) => (
                 <TouchableOpacity
                   key={option.id}
@@ -427,11 +474,65 @@ export default function HistoryScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
+
+              {/* Opção Personalizada */}
+              <TouchableOpacity
+                  style={[
+                    styles.filterChip,
+                    activeFilter === 'custom' && styles.activeFilterChip,
+                    !isPremium && { opacity: 0.7 }
+                  ]}
+                  onPress={() => {
+                      if (!isPremium) {
+                          applyFilter('custom'); // Dispara o alerta premium
+                      } else {
+                          setActiveFilter('custom'); 
+                      }
+                  }}
+                >
+                  <Calendar size={16} color={activeFilter === 'custom' ? Colors.white : (isPremium ? Colors.textSecondary : Colors.primary)} />
+                  <Text style={[
+                    styles.filterChipText,
+                    activeFilter === 'custom' && styles.activeFilterChipText,
+                    !isPremium && { color: Colors.primary }
+                  ]}>
+                    Personalizado {!isPremium && '(Premium)'}
+                  </Text>
+              </TouchableOpacity>
             </View>
+
+            {/* Seletor de Data Customizado (Só aparece se for Premium e selecionado) */}
+            {activeFilter === 'custom' && isPremium && (
+                <View style={styles.customDateContainer}>
+                    <Text style={styles.customDateLabel}>Intervalo (Data e Hora)</Text>
+                    <View style={styles.dateInputsRow}>
+                        <TouchableOpacity style={styles.dateInput} onPress={() => openDatePicker('start')}>
+                            <Text style={styles.dateInputText}>{format(tempDateStart, 'dd/MM HH:mm')}</Text>
+                        </TouchableOpacity>
+                        <Text style={{color: Colors.textSecondary}}>-</Text>
+                        <TouchableOpacity style={styles.dateInput} onPress={() => openDatePicker('end')}>
+                            <Text style={styles.dateInputText}>{format(tempDateEnd, 'dd/MM HH:mm')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <Button title="Confirmar Intervalo" onPress={handleCustomDateConfirm} style={{marginTop: 12}} />
+                </View>
+            )}
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={showDatePicker === 'start' ? tempDateStart : tempDateEnd}
+                    mode={pickerMode}
+                    is24Hour={true}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                    maximumDate={new Date()}
+                />
+            )}
 
             <View style={styles.modalFooter}>
               <Button 
-                title="Aplicar Filtros" 
+                title="Fechar" 
+                variant="outline"
                 onPress={() => setShowFilterModal(false)} 
               />
             </View>
