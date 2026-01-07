@@ -46,13 +46,24 @@ export default function ProfileScreen() {
     }, [user])
   );
 
+  const openSupportWhatsApp = async () => {
+    const whatsappUrl = 'https://wa.me/556740420408?text=Preciso%20de%20suporte%20no%20app%20Tagpro+';
+    const canOpen = await Linking.canOpenURL(whatsappUrl);
+    
+    if (canOpen) {
+      await Linking.openURL(whatsappUrl);
+    } else {
+      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
+    }
+  };
+
   const menuItems = [
     { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => router.push('/(tabs)/personal-data') },
     // Ação atualizada para navegar para a tela de dispositivos
     { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
     { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => router.push('/(tabs)/security') },
     { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => router.push('/(tabs)/settings') },
-    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => {} },
+    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: openSupportWhatsApp },
   ];
 
   return (
