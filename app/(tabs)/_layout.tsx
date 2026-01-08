@@ -4,9 +4,11 @@ import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { ActivityIndicator, View, Platform } from 'react-native';
 import { NotificationBanner } from '../../components/NotificationBanner';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const { session, isLoading } = useAuth();
+  const insets = useSafeAreaInsets();
 
   if (isLoading) {
     return (
@@ -29,8 +31,8 @@ export default function TabLayout() {
           tabBarStyle: {
             backgroundColor: Colors.surface,
             borderTopColor: Colors.border,
-            height: Platform.OS === 'android' ? 80 : 80,
-            paddingBottom: Platform.OS === 'android' ? 16 : 24,
+            height: 64 + Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 24),
+            paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 24),
             paddingTop: 8,
           },
           tabBarActiveTintColor: Colors.primary,
@@ -38,7 +40,7 @@ export default function TabLayout() {
           tabBarLabelStyle: {
             fontFamily: 'Poppins_500Medium',
             fontSize: 10,
-            paddingBottom: Platform.OS === 'android' ? 4 : 0,
+            paddingBottom: 0,
           },
         }}
       >
