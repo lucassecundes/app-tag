@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
-import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone } from 'lucide-react-native';
+import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, Bell } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -65,6 +65,14 @@ export default function ProfileScreen() {
     { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => router.push('/(tabs)/settings') },
     { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: openSupportWhatsApp },
   ];
+
+  if (userData?.role === 'admin') {
+    menuItems.push({
+      icon: <Bell size={20} color={Colors.text} />,
+      label: 'Gerenciar Notificações',
+      action: () => router.push('/admin/notifications' as any)
+    });
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

@@ -117,6 +117,15 @@ export default function DeviceDetailScreen() {
   });
 
   useEffect(() => {
+    if (cameraRef.current && currentLocation.lat && currentLocation.lng) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [currentLocation.lng, currentLocation.lat],
+        animationDuration: 1000,
+      });
+    }
+  }, [currentLocation]);
+
+  useEffect(() => {
     const fetchDeviceData = async () => {
       if (!id) return; // Guard clause added
 
@@ -844,6 +853,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 122, 0, 0.05)',
     borderColor: Colors.primary,
   },
+  alertCardDisabled: {
+    opacity: 0.7,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
   alertHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -860,6 +874,11 @@ const styles = StyleSheet.create({
   },
   alertIconBoxActive: {
     backgroundColor: Colors.primary,
+  },
+  alertIconBoxDisabled: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   alertTitle: {
     fontSize: 14,

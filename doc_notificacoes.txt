@@ -1,0 +1,62 @@
+# Documentação: Sistema de Notificações Internas (In-App)
+
+Este documento descreve a implementação e funcionamento do sistema de notificações internas, permitindo que administradores enviem comunicados para os usuários do aplicativo móvel, com suporte a segmentação por versão.
+
+## 1. Visão Geral
+O sistema permite criar banners informativos (Info, Warning, Error) que aparecem no topo do aplicativo. É possível direcionar mensagens para todos os usuários ou especificamente para versões antigas que precisam de atualização.
+
+## 2. Estrutura do Banco de Dados (Supabase)
+
+**Tabela:** `public.in_app_notifications`
+
+| Coluna          | Tipo      | Descrição                                                                 |
+|-----------------|-----------|---------------------------------------------------------------------------|
+| `id`            | UUID      | Identificador único (PK)                                                  |
+| `title`         | TEXT      | Título curto da notificação                                               |
+| `message`       | TEXT      | Conteúdo completo da mensagem                                             |
+| `type`          | TEXT      | Tipo visual: `info` (azul), `warning` (amarelo), `error` (vermelho)       |
+| `target_version`| TEXT      | Versão de referência do app (ex: "1.0.0"). Null se `condition` for 'all'  |
+| `condition`     | TEXT      | Regra de exibição: `all` (todos), `equal` (igual a), `less_than` (menor que)|
+| `is_active`     | BOOLEAN   | Se a notificação está visível ou não                                      |
+| `created_at`    | TIMESTAMP | Data de criação                                                           |
+| `created_by`    | UUID      | ID do usuário admin que criou (FK -> auth.users)                          |
+
+### Permissões (RLS)
+- **Leitura (SELECT):** Pública para todos os usuários autenticados, desde que `is_active = true`.
+- **Escrita (INSERT/UPDATE/DELETE):** Restrita a usuários com `role = 'admin'` na tabela `public.usuario`.
+
+## 3. Integração no App Mobile
+
+### Componente de Exibição
+- **Arquivo:** `components/NotificationBanner.tsx`
+- **Lógica:** 
+  1. Busca notificações ativas no Supabase.
+  2. Obtém a versão atual do app via `Constants.expoConfig.version`.
+  3. Filtra localmente quais notificações devem ser exibidas com base na regra `condition` e `target_version`.
+  4. Exibe um carrossel caso haja múltiplas notificações.
+
+### Regras de Segmentação
+- **Todos (`all`):** Exibe para qualquer versão. Útil para avisos gerais de manutenção.
+- **Menor que (`less_than`):** Exibe apenas se a versão do app do usuário for MENOR que a `target_version`. Útil para forçar atualizações ("Sua versão está desatualizada").
+- **Igual a (`equal`):** Exibe apenas para a versão exata. Útil para avisos de bugs específicos de uma versão.
+
+## 4. Painel Administrativo
+
+### Acesso
+- Disponível na tela de **Perfil** do app.
+- O botão "Gerenciar Notificações" aparece apenas se o usuário tiver `role: 'admin'`.
+
+### Funcionalidades
+- Listagem de todas as notificações (ativas e inativas).
+- Criação de novas notificações.
+- Exclusão e alteração de status (Ativar/Desativar).
+
+## 5. Exemplo de Uso (SQL)
+
+```sql
+-- Exemplo: Criar aviso para usuários com versão antiga
+INSERT INTO public.in_app_notifications 
+(title, message, type, target_version, condition, is_active)
+VALUES 
+('Atualização Necessária', 'Sua versão é antiga. Atualize para continuar.', 'warning', '1.2.0', 'less_than', true);
+```
