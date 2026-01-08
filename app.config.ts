@@ -2,7 +2,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "TAGPRO+ Rastreamento",
+  name: "Tagpro+",
   slug: "tagpro-rastreamento",
   version: "1.0.0",
   orientation: "portrait",
