@@ -19,6 +19,7 @@ export default function DeviceListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState('Usuário');
 
   // Admin Filter States
   const [isAdmin, setIsAdmin] = useState(false);
@@ -28,7 +29,29 @@ export default function DeviceListScreen() {
 
   useEffect(() => {
     checkAdminStatus();
+    fetchUserName();
   }, [user]);
+
+  const fetchUserName = async () => {
+    if (user) {
+      // Tenta pegar do metadata primeiro
+      if (user.user_metadata?.full_name) {
+        setFirstName(user.user_metadata.full_name.split(' ')[0]);
+        return;
+      }
+
+      // Se não tiver no metadata, busca no banco
+      const { data } = await supabase
+        .from('usuario')
+        .select('nome')
+        .eq('auth_user_id', user.id)
+        .single();
+      
+      if (data?.nome) {
+        setFirstName(data.nome.split(' ')[0]);
+      }
+    }
+  };
 
   const checkAdminStatus = async () => {
     if (user) {
@@ -228,7 +251,7 @@ export default function DeviceListScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Olá, {user?.user_metadata?.full_name?.split(' ')[0] || 'Usuário'}</Text>
+          <Text style={styles.greeting}>Olá, {firstName}</Text>
           <Text style={styles.title}>Meus Dispositivos</Text>
         </View>
         
