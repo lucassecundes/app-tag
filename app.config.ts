@@ -26,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.tagpro.app",
-    versionCode: 4,
+    versionCode: 5,
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#151515"
