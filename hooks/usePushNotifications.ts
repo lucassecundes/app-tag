@@ -84,7 +84,17 @@ export function usePushNotifications() {
   const saveTokenToSupabase = async (token: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      console.log('Token pronto para salvar no Supabase:', token);
+      console.log('Salvando token no Supabase:', token);
+      const { error } = await supabase
+        .from('usuario')
+        .update({ expo_push_token: token })
+        .eq('auth_user_id', user.id);
+
+      if (error) {
+        console.error('Erro ao salvar push token:', error);
+      } else {
+        console.log('Push token salvo com sucesso!');
+      }
     }
   };
 

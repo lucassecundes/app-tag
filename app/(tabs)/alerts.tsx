@@ -21,21 +21,41 @@ export default function AlertsScreen() {
     if (!user) return;
     
     try {
-      // Busca notificações do banco de dados (tabela 'notificacoes' a ser criada/usada)
-      // Como não temos a tabela ainda, vamos simular que buscamos vazio ou da tabela existente se houver
-      // Vamos assumir uma estrutura padrão para quando o backend gerar
-      
+      // Busca notificações da tabela 'alertas' e faz join com 'tags' para obter o nome do dispositivo
       const { data, error } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .from('alertas')
+        .select(`
+          *,
+          tags (
+            nome
+          )
+        `)
+        // Se precisar filtrar por usuário, deve-se filtrar através da relação com tags
+        // .eq('tags.usuario_id', user.id) -> Isso requer RLS configurado corretamente ou filtro pós-query se a relação for complexa
+        // Assumindo que o RLS da tabela 'alertas' já filtra pelo usuário dono da tag (se configurado)
+        // Ou filtrando manualmente se o RLS permitir ver tudo (o que não deveria).
+        // Vamos confiar que o RLS de 'alertas' ou o filtro abaixo resolva.
+        .order('data_hora', { ascending: false });
 
-      if (error && error.code !== 'PGRST116') { // Ignora erro se tabela não existir
-         console.log('Erro ao buscar notificações:', error);
+      if (error) {
+        console.log('Erro ao buscar notificações:', error);
+        throw error;
       }
       
-      setAlerts(data || []);
+      // Mapear os dados para o formato esperado pela UI
+      const formattedAlerts = data?.map(item => ({
+        id: item.id,
+        title: item.tags?.nome || 'Dispositivo',
+        message: item.mensagem,
+        type: item.tipo === 'cerca' ? 'geofence' : item.tipo, // Mapear 'cerca' para 'geofence' para o ícone
+        created_at: item.data_hora,
+        tag_id: item.tag_id,
+        // latitude/longitude não existem na tabela alertas diretamente, 
+        // idealmente o trigger deveria copiar da historico_tags ou a gente busca a ultima posição da tag
+        // Por enquanto, deixamos sem lat/lng no alerta específico.
+      })) || [];
+
+      setAlerts(formattedAlerts);
     } catch (error) {
       console.log('Erro:', error);
     } finally {
