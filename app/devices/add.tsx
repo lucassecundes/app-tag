@@ -8,9 +8,6 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { translateSupabaseError } from '../../lib/errorTranslator';
-
-import { PlanService } from '../../services/planService';
 
 export default function AddDeviceScreen() {
   const { user } = useAuth();
@@ -63,8 +60,7 @@ export default function AddDeviceScreen() {
       const { data, error } = await supabase
         .from('tags')
         .insert(payload)
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Erro Supabase:', error);
@@ -73,23 +69,12 @@ export default function AddDeviceScreen() {
 
       console.log('Dispositivo vinculado:', data);
 
-      // Ativar plano automaticamente
-      console.log('Ativando plano anual...');
-      const activationResult = await PlanService.activateDevice(user.id, data.id);
-
-      let successMessage = 'Dispositivo vinculado com sucesso!';
-      if (activationResult.success) {
-        successMessage += '\n\nPlano Anual ativado e válido por 1 ano.';
-      } else {
-        successMessage += '\n\nAtenção: Não foi possível ativar o plano automaticamente. Entre em contato com o suporte.';
-      }
-
-      Alert.alert('Sucesso', successMessage, [
+      Alert.alert('Sucesso', 'Dispositivo vinculado com sucesso!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
       console.error('Erro no catch:', error);
-      Alert.alert('Erro ao Vincular', translateSupabaseError(error.message) || 'Verifique sua conexão e tente novamente.');
+      Alert.alert('Erro ao Vincular', error.message || 'Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }

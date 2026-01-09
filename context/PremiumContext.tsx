@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { checkPremiumStatus } from '../lib/premium';
+import { supabase } from '../lib/supabase';
 
 type PremiumContextType = {
   isPremium: boolean;
@@ -29,6 +30,20 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
+      // 1. Verificar se o usuário é ADMIN
+      const { data: userData } = await supabase
+        .from('usuario')
+        .select('role')
+        .eq('auth_user_id', session.user.id)
+        .single();
+
+      if (userData?.role === 'admin') {
+        setIsPremium(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Se não for admin, verifica status normal
       const status = await checkPremiumStatus(session.user.id);
       setIsPremium(status);
     } catch (error) {

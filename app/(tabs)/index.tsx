@@ -1,31 +1,67 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, Modal } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Plus, Smartphone, Tag, MapPin, AlertCircle, Car, Truck, Bike, Bus, Package, Bell, ShieldAlert } from 'lucide-react-native';
+import { Plus, Smartphone, Tag, MapPin, AlertCircle, Car, Truck, Bike, Bus, Package, Bell, ShieldAlert, Filter, Search, X } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { usePremium } from '../../context/PremiumContext';
+import { PremiumBanner } from '../../components/PremiumBanner';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { translateSupabaseError } from '../../lib/errorTranslator';
 
 export default function DeviceListScreen() {
   const { user } = useAuth();
+  const { isPremium } = usePremium();
+  
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Admin Filter States
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [targetUserId, setTargetUserId] = useState('');
+  const [filterActive, setFilterActive] = useState(false);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, [user]);
+
+  const checkAdminStatus = async () => {
+    if (user) {
+      const { data } = await supabase
+        .from('usuario')
+        .select('role')
+        .eq('auth_user_id', user.id)
+        .single();
+      setIsAdmin(data?.role === 'admin');
+    }
+  };
+
   const fetchDevices = async () => {
     if (!user) return;
     setErrorMsg(null);
     try {
-      console.log('Buscando dispositivos para usuário:', user.id);
+      console.log('Buscando dispositivos...');
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('tags')
         .select('*')
-        .eq('usuario_id', user.id)
-        .order('ultima_comunicacao', { ascending: false }); // Ordenar por mais recente
+        .order('ultima_comunicacao', { ascending: false });
+
+      // Se for admin e tiver filtro ativo, busca pelo ID alvo
+      if (isAdmin && filterActive && targetUserId) {
+        // Tenta buscar pelo usuario_id (UUID)
+        query = query.eq('usuario_id', targetUserId);
+      } else {
+        // Comportamento padrão: busca os dispositivos do próprio usuário
+        query = query.eq('usuario_id', user.id);
+      }
+      
+      const { data, error } = await query;
 
       if (error) {
         console.error('Erro Supabase:', error);
@@ -43,12 +79,32 @@ export default function DeviceListScreen() {
     }
   };
 
+  const applyFilter = () => {
+    setFilterActive(true);
+    setShowFilterModal(false);
+    setLoading(true);
+    fetchDevices();
+  };
+
+  const clearFilter = () => {
+    setTargetUserId('');
+    setFilterActive(false);
+    setLoading(true);
+    // fetchDevices será chamado pelo useEffect quando filterActive mudar, ou podemos chamar manualmente
+    // mas precisamos garantir que o estado atualizou. 
+    // Melhor abordagem: chamar fetchDevices na próxima renderização ou usar um useEffect dependente.
+    // Para simplificar, vou forçar a chamada com o estado "limpo" lógico:
+    setTimeout(() => {
+        fetchDevices(); // Re-busca sem filtros (volta ao padrão user.id)
+    }, 100);
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       if (user) {
         fetchDevices();
       }
-    }, [user])
+    }, [user, filterActive]) // Recarrega se o filtro mudar
   );
 
   useEffect(() => {
@@ -175,7 +231,65 @@ export default function DeviceListScreen() {
           <Text style={styles.greeting}>Olá, {user?.user_metadata?.full_name?.split(' ')[0] || 'Usuário'}</Text>
           <Text style={styles.title}>Meus Dispositivos</Text>
         </View>
+        
+        {isAdmin && (
+          <TouchableOpacity 
+            style={[styles.filterButton, filterActive && styles.filterButtonActive]}
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Filter size={20} color={filterActive ? Colors.white : Colors.text} />
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Exibe aviso de filtro ativo */}
+      {filterActive && (
+        <View style={styles.filterBanner}>
+          <Text style={styles.filterBannerText}>Filtrando por ID: {targetUserId}</Text>
+          <TouchableOpacity onPress={clearFilter}>
+            <X size={16} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Modal de Filtro */}
+      <Modal
+        visible={showFilterModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtrar por Usuário</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                <X size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalLabel}>ID do Usuário (UUID)</Text>
+            <Input 
+              placeholder="Ex: 123e4567-e89b..." 
+              value={targetUserId}
+              onChangeText={setTargetUserId}
+              autoCapitalize="none"
+              icon={<Search size={20} color={Colors.textSecondary} />}
+            />
+            
+            <Button 
+              title="APLICAR FILTRO" 
+              onPress={applyFilter}
+              style={{ marginTop: 16 }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* 3. Exibição Condicional do Banner Premium (Apenas para não-admin/não-premium) */}
+      {!isPremium && !isAdmin && (
+        <PremiumBanner message="Faça upgrade para monitorar dispositivos ilimitados" />
+      )}
 
       {errorMsg && (
         <View style={styles.errorContainer}>
@@ -393,5 +507,58 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  filterButton: {
+    padding: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  filterBannerText: {
+    color: Colors.white,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Montserrat_700Bold',
+    color: Colors.text,
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_500Medium',
+    color: Colors.textSecondary,
+    marginBottom: 8,
   },
 });

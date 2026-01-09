@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Car, Truck, Bike, Bus, Package, Save, Type, CreditCard } from 'lucide-react-native';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import * as WebBrowser from 'expo-web-browser';
+import { ArrowLeft, Car, Truck, Bike, Bus, Package, Save, Type } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
-import { translateSupabaseError } from '../../lib/errorTranslator';
-import { PlanService } from '../../services/planService';
 
 const DEVICE_TYPES = [
   { id: 'car', label: 'Carro', icon: <Car size={24} color={Colors.white} /> },
@@ -26,7 +21,6 @@ export default function EditDeviceScreen() {
 
   const [nome, setNome] = useState('');
   const [type, setType] = useState('car');
-  const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -36,21 +30,17 @@ export default function EditDeviceScreen() {
 
   const fetchDeviceDetails = async () => {
     try {
-      const { data: deviceData, error: deviceError } = await supabase
+      const { data, error } = await supabase
         .from('tags')
         .select('*')
         .eq('id', id)
         .single();
 
-      if (deviceError) throw deviceError;
+      if (error) throw error;
 
-      if (deviceData) {
-        setNome(deviceData.nome || '');
-        setType(deviceData.icone || 'car');
-        
-        // Fetch plan details
-        const planData = await PlanService.getDevicePlan(String(id));
-        setPlan(planData);
+      if (data) {
+        setNome(data.nome || '');
+        setType(data.icone || 'car');
       }
     } catch (error) {
       console.error('Erro ao buscar dispositivo:', error);
@@ -59,24 +49,6 @@ export default function EditDeviceScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRenovate = async () => {
-    const checkoutUrl = plan?.planos?.checkout_url || 'https://pagamento.tagnativo.com.br/checkout/e264dc25-efa9-4530-8e62-dd0563394313';
-    
-    if (checkoutUrl) {
-      await WebBrowser.openBrowserAsync(checkoutUrl);
-    } else {
-      Alert.alert('Erro', 'Link de renovação indisponível.');
-    }
-  };
-
-  const isCloseToExpiry = (dateString: string) => {
-    const expiry = new Date(dateString);
-    const today = new Date();
-    const diffTime = expiry.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 30;
   };
 
   const handleSave = async () => {
@@ -101,7 +73,7 @@ export default function EditDeviceScreen() {
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
-      Alert.alert('Erro', translateSupabaseError(error.message) || 'Erro ao atualizar dispositivo.');
+      Alert.alert('Erro', error.message || 'Erro ao atualizar dispositivo.');
     } finally {
       setSaving(false);
     }
@@ -152,7 +124,7 @@ export default function EditDeviceScreen() {
                   styles.iconContainer,
                   type === item.id && styles.activeIconContainer
                 ]}>
-                  {React.cloneElement(item.icon as React.ReactElement<any>, {
+                  {React.cloneElement(item.icon as React.ReactElement, {
                     color: type === item.id ? Colors.white : Colors.textSecondary
                   })}
                 </View>
@@ -166,52 +138,6 @@ export default function EditDeviceScreen() {
             ))}
           </View>
         </View>
-
-        {plan && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Assinatura e Plano</Text>
-            <View style={styles.planCard}>
-              <View style={styles.planHeader}>
-                <CreditCard size={20} color={Colors.primary} />
-                <Text style={styles.planName}>Plano Anual</Text>
-                <View style={[styles.statusBadge, plan.status === 'active' ? styles.statusActive : styles.statusInactive]}>
-                  <Text style={[styles.statusText, plan.status === 'active' ? styles.statusTextActive : styles.statusTextInactive]}>
-                    {plan.status === 'active' ? 'ATIVO' : 'INATIVO'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.planDetails}>
-                <View style={styles.planRow}>
-                  <Text style={styles.planLabel}>Ativação:</Text>
-                  <Text style={styles.planValue}>
-                    {format(new Date(plan.activation_date), 'dd/MM/yyyy', { locale: ptBR })}
-                  </Text>
-                </View>
-                <View style={styles.planRow}>
-                  <Text style={styles.planLabel}>Vencimento:</Text>
-                  <Text style={[
-                    styles.planValue,
-                    isCloseToExpiry(plan.expiration_date) && styles.expiryWarning
-                  ]}>
-                    {format(new Date(plan.expiration_date), 'dd/MM/yyyy', { locale: ptBR })}
-                  </Text>
-                </View>
-              </View>
-
-              {isCloseToExpiry(plan.expiration_date) && (
-                <Button 
-                  title="RENOVAR AGORA" 
-                  onPress={handleRenovate}
-                  variant="outline"
-                  style={styles.renewButton}
-                />
-              )}
-            </View>
-          </View>
-        )}
 
         <Button 
           title="SALVAR ALTERAÇÕES" 
@@ -299,93 +225,6 @@ const styles = StyleSheet.create({
   activeTypeLabel: {
     color: Colors.primary,
     fontFamily: 'Poppins_500Medium',
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Montserrat_600SemiBold',
-    color: Colors.text,
-    marginBottom: 16,
-  },
-  planCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  planHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  planName: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Montserrat_600SemiBold',
-    color: Colors.text,
-    marginLeft: 12,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusActive: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  statusInactive: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-  },
-  statusText: {
-    fontSize: 10,
-    fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase',
-  },
-  statusTextActive: {
-    color: '#22c55e',
-  },
-  statusTextInactive: {
-    color: '#ef4444',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginBottom: 16,
-  },
-  planDetails: {
-    gap: 12,
-    marginBottom: 16,
-  },
-  planRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  planLabel: {
-    fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
-    color: Colors.textSecondary,
-  },
-  planValue: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: Colors.text,
-  },
-  expiryWarning: {
-    color: Colors.primary,
-    fontWeight: 'bold',
-  },
-  renewButton: {
-    marginTop: 8,
-  },
-  noPlanText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: 'Poppins_400Regular',
-    fontStyle: 'italic',
   },
   saveButton: {
     marginTop: 'auto',

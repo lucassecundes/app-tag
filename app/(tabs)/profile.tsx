@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
-import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, Bell } from 'lucide-react-native';
+import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -46,33 +46,14 @@ export default function ProfileScreen() {
     }, [user])
   );
 
-  const openSupportWhatsApp = async () => {
-    const whatsappUrl = 'https://wa.me/556740420408?text=Preciso%20de%20suporte%20no%20app%20Tagpro+';
-    const canOpen = await Linking.canOpenURL(whatsappUrl);
-    
-    if (canOpen) {
-      await Linking.openURL(whatsappUrl);
-    } else {
-      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
-    }
-  };
-
   const menuItems = [
     { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => router.push('/(tabs)/personal-data') },
     // Ação atualizada para navegar para a tela de dispositivos
     { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
     { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => router.push('/(tabs)/security') },
     { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => router.push('/(tabs)/settings') },
-    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: openSupportWhatsApp },
+    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => {} },
   ];
-
-  if (userData?.role === 'admin') {
-    menuItems.push({
-      icon: <Bell size={20} color={Colors.text} />,
-      label: 'Gerenciar Notificações',
-      action: () => router.push('/admin/notifications' as any)
-    });
-  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
