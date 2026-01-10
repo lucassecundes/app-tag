@@ -6,6 +6,7 @@ import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone } 
 import { Button } from '../../components/ui/Button';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import Constants from 'expo-constants';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -99,7 +100,7 @@ export default function ProfileScreen() {
         style={styles.logoutButton}
       />
       
-      <Text style={styles.versionText}>Versão 1.0.0</Text>
+      <Text style={styles.versionText}>Versão {Constants.expoConfig?.version}</Text>
     </ScrollView>
   );
 }
