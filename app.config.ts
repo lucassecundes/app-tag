@@ -26,10 +26,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.tagpro.app",
-    versionCode: 7,
+    versionCode: 8,
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#151515"
+    },
+    navigationBar: {
+      backgroundColor: "#151515",
+      barStyle: "light-content"
     },
     permissions: [
       "android.permission.CAMERA",
@@ -71,7 +75,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     eas: {
-      projectId: "e917ad5d-2b23-44ae-aaaa-9d4edab88043"
+      projectId: "15b1a5bc-9104-4d9f-9721-427d4d94201c"
     }
   }
 });

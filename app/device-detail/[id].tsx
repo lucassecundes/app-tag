@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { usePremium } from '../../context/PremiumContext';
+import { useAuth } from '../../context/AuthContext';
 import { PremiumBadge } from '../../components/PremiumBadge';
 import { translateSupabaseError } from '../../lib/errorTranslator';
 
@@ -53,9 +54,11 @@ export default function DeviceDetailScreen() {
   const params = useLocalSearchParams();
   const { id } = params;
   const { isPremium } = usePremium();
+  const { user } = useAuth();
   
   const [nome, setNome] = useState(params.nome as string || 'Dispositivo');
   const [type, setType] = useState('car');
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const initialLat = parseFloat(params.lat as string) || -23.550520;
   const initialLng = parseFloat(params.lng as string) || -46.633308;
@@ -447,26 +450,25 @@ export default function DeviceDetailScreen() {
       <View style={styles.controlsContainer}>
         <TouchableOpacity style={styles.controlButton} onPress={toggleMapStyle}>
           <Layers size={24} color={Colors.text} />
-          <Text style={styles.controlLabel}>{mapStyle === StyleURL.Dark ? 'Satélite' : 'Mapa'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.controlButton} onPress={openStreetView}>
           <Eye size={24} color={Colors.text} />
-          <Text style={styles.controlLabel}>Street View</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.controlButton, { backgroundColor: Colors.primary, borderColor: Colors.primary }]} 
-          onPress={simulateMovement}
-          disabled={simulating}
-        >
-          {simulating ? (
-            <ActivityIndicator size="small" color={Colors.white} />
-          ) : (
-            <PlayCircle size={24} color={Colors.white} />
-          )}
-          <Text style={styles.controlLabel}>Simular</Text>
-        </TouchableOpacity>
+        {isAdmin && (
+          <TouchableOpacity 
+            style={[styles.controlButton, { backgroundColor: Colors.primary, borderColor: Colors.primary }]} 
+            onPress={simulateMovement}
+            disabled={simulating}
+          >
+            {simulating ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <PlayCircle size={24} color={Colors.white} />
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Modal de Agendamento */}

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Plus, Smartphone, Tag, MapPin, AlertCircle, Car, Truck, Bike, Bus, Package, Bell, ShieldAlert, Filter, Search, X } from 'lucide-react-native';
+import { Plus, Smartphone, Tag, MapPin, AlertCircle, Car, Truck, Bike, Bus, Package, Bell, ShieldAlert, Filter, Search, X, User } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../../context/PremiumContext';
 import { PremiumBanner } from '../../components/PremiumBanner';
+import { ChatIcon } from '../../components/ChatIcon';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { translateSupabaseError } from '../../lib/errorTranslator';
@@ -26,6 +27,65 @@ export default function DeviceListScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [targetUserId, setTargetUserId] = useState('');
   const [filterActive, setFilterActive] = useState(false);
+  const [targetUserLabel, setTargetUserLabel] = useState(''); // Store the email or name for display
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userResults, setUserResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchTimer, setSearchTimer] = useState<any>(null);
+
+  const handleSearchTextChange = (text: string) => {
+    setSearchQuery(text);
+    if (searchTimer) clearTimeout(searchTimer);
+
+    if (text.length < 2) {
+      setUserResults([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      performSearch(text);
+    }, 500);
+    setSearchTimer(timer);
+  };
+
+  const performSearch = async (query: string) => {
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('usuario')
+        .select('auth_user_id, nome, email')
+        .or(`email.ilike.%${query}%,nome.ilike.%${query}%`)
+        .limit(5);
+
+      if (error) throw error;
+      setUserResults(data || []);
+    } catch (error) {
+      console.log('Erro na busca principal:', error);
+      // Fallback: tentar apenas por nome se email falhar
+      try {
+        const { data } = await supabase
+          .from('usuario')
+          .select('auth_user_id, nome')
+          .ilike('nome', `%${query}%`)
+          .limit(5);
+        setUserResults(data || []);
+      } catch (e) {
+        console.log('Erro no fallback:', e);
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectUser = (selectedUser: any) => {
+    setTargetUserId(selectedUser.auth_user_id);
+    setTargetUserLabel(selectedUser.email || selectedUser.nome || selectedUser.auth_user_id);
+    setFilterActive(true);
+    setShowFilterModal(false);
+    // O useEffect cuidará de recarregar os dispositivos
+  };
 
   useEffect(() => {
     checkAdminStatus();
@@ -103,6 +163,7 @@ export default function DeviceListScreen() {
   };
 
   const applyFilter = () => {
+    setTargetUserLabel(targetUserId); // Use ID as label when manually filtering
     setFilterActive(true);
     setShowFilterModal(false);
     setLoading(true);
@@ -252,7 +313,7 @@ export default function DeviceListScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Olá, {firstName}</Text>
-          <Text style={styles.title}>Meus Dispositivos</Text>
+          <Text style={styles.title}>Lista de Dispositivos</Text>
         </View>
         
         {isAdmin && (
@@ -268,7 +329,7 @@ export default function DeviceListScreen() {
       {/* Exibe aviso de filtro ativo */}
       {filterActive && (
         <View style={styles.filterBanner}>
-          <Text style={styles.filterBannerText}>Filtrando por ID: {targetUserId}</Text>
+          <Text style={styles.filterBannerText}>Filtrando por: {targetUserLabel}</Text>
           <TouchableOpacity onPress={clearFilter}>
             <X size={16} color={Colors.white} />
           </TouchableOpacity>
@@ -282,7 +343,10 @@ export default function DeviceListScreen() {
         animationType="slide"
         onRequestClose={() => setShowFilterModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtrar por Usuário</Text>
@@ -291,22 +355,64 @@ export default function DeviceListScreen() {
               </TouchableOpacity>
             </View>
             
-            <Text style={styles.modalLabel}>ID do Usuário (UUID)</Text>
+            <Text style={styles.modalLabel}>Pesquisar Usuário (Nome ou Email)</Text>
+            <Input 
+              placeholder="Digite nome ou email..." 
+              value={searchQuery}
+              onChangeText={handleSearchTextChange}
+              autoCapitalize="none"
+              icon={<Search size={20} color={Colors.textSecondary} />}
+            />
+
+            {isSearching && (
+              <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 16 }} />
+            )}
+
+            <FlatList
+              data={userResults}
+              keyExtractor={(item) => item.auth_user_id}
+              style={{ marginTop: 8, maxHeight: 200 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.resultItem}
+                  onPress={() => selectUser(item)}
+                >
+                  <View style={styles.resultIcon}>
+                    <User size={20} color={Colors.primary} />
+                  </View>
+                  <View>
+                    <Text style={styles.resultName}>{item.nome || 'Sem nome'}</Text>
+                    {item.email && <Text style={styles.resultEmail}>{item.email}</Text>}
+                    <Text style={styles.resultId}>ID: {item.auth_user_id?.substring(0,8)}...</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                searchQuery.length > 2 && !isSearching ? (
+                  <Text style={styles.noResultText}>Nenhum usuário encontrado.</Text>
+                ) : null
+              }
+            />
+            
+            <View style={styles.modalDivider} />
+
+            <Text style={styles.modalLabel}>Ou ID Manual (UUID)</Text>
             <Input 
               placeholder="Ex: 123e4567-e89b..." 
               value={targetUserId}
               onChangeText={setTargetUserId}
               autoCapitalize="none"
-              icon={<Search size={20} color={Colors.textSecondary} />}
+              icon={<Tag size={20} color={Colors.textSecondary} />}
             />
             
             <Button 
-              title="APLICAR FILTRO" 
+              title="APLICAR FILTRO MANUAL" 
               onPress={applyFilter}
               style={{ marginTop: 16 }}
+              variant="outline"
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* 3. Exibição Condicional do Banner Premium (Apenas para não-admin/não-premium) */}
@@ -360,6 +466,8 @@ export default function DeviceListScreen() {
       >
         <Plus size={24} color={Colors.white} />
       </TouchableOpacity>
+
+      <ChatIcon style={{ bottom: 200, right: 24 }} />
     </View>
   );
 }
@@ -500,7 +608,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 32,
+    bottom: 130, // Aumentado para dar mais espaço da tab bar
     right: 24,
     width: 56,
     height: 56,
@@ -583,5 +691,48 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_500Medium',
     color: Colors.textSecondary,
     marginBottom: 8,
+  },
+  resultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  resultIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.surfaceHighlight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  resultName: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.text,
+  },
+  resultEmail: {
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.textSecondary,
+  },
+  resultId: {
+    fontSize: 10,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.textSecondary,
+    opacity: 0.7,
+  },
+  noResultText: {
+    textAlign: 'center',
+    color: Colors.textSecondary,
+    marginTop: 16,
+    fontFamily: 'Poppins_400Regular',
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 16,
   },
 });

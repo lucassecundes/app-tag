@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { usePremium } from '../context/PremiumContext';
-import { getPremiumCheckoutUrl } from '../lib/premium';
+import { supabase } from '../lib/supabase';
 import { Check, Crown, X } from 'lucide-react-native';
 
 export default function SubscriptionScreen() {
@@ -22,13 +22,56 @@ export default function SubscriptionScreen() {
   }, [isPremium, isLoading]);
 
   useEffect(() => {
-    loadCheckoutUrl();
+    generateCheckoutUrl();
   }, []);
 
-  const loadCheckoutUrl = async () => {
-    const url = await getPremiumCheckoutUrl();
-    setCheckoutUrl(url);
-    setLoadingUrl(false);
+  const generateCheckoutUrl = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setLoadingUrl(false);
+        return;
+      }
+
+      // 1. Buscar dados do usuário (nome)
+      const { data: profileData } = await supabase
+        .from('usuario')
+        .select('nome')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      const nome = profileData?.nome || user.user_metadata?.full_name || '';
+      const email = user.email || '';
+
+      // 2. Buscar código da TAG (pegar a primeira encontrada)
+      const { data: tags } = await supabase
+        .from('tags')
+        .select('codigo')
+        .eq('usuario_id', user.id)
+        .limit(1);
+      
+      const tagCode = tags && tags.length > 0 ? tags[0].codigo : '';
+
+      // 3. Gerar URL
+      const baseUrl = 'https://pay.cakto.com.br/6e8q3mh_710202';
+      const params = new URLSearchParams({
+        name: nome,
+        email: email,
+        confirmEmail: email,
+        src: tagCode
+      });
+
+      const finalUrl = `${baseUrl}?${params.toString()}`;
+      console.log('Generated Checkout URL:', finalUrl);
+      
+      setCheckoutUrl(finalUrl);
+    } catch (error) {
+      console.error('Error generating checkout URL:', error);
+      Alert.alert('Erro', 'Não foi possível gerar o link de pagamento.');
+    } finally {
+      setLoadingUrl(false);
+    }
   };
 
   const handleSubscribe = async () => {
@@ -55,8 +98,7 @@ export default function SubscriptionScreen() {
     'Acesso ilimitado ao histórico de localização',
     'Todas os alertas do sistema desbloqueados',
     'Monitoramento de múltiplos dispositivos',
-    'Suporte prioritário 24/7',
-    'Sem anúncios'
+    'Suporte prioritário'
   ];
 
   if (isLoading) {
