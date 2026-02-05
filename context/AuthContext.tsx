@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   isLoading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -28,7 +28,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Erro ao recuperar sessão:', error);
+      } else {
+        console.log('Sessão recuperada:', session ? 'Sim' : 'Não');
+      }
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);

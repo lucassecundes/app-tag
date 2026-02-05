@@ -204,7 +204,7 @@ export default function GlobalMapScreen() {
             coordinate={[parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)]}
             onSelected={() => handleMarkerPress(device)}
           >
-            <View style={styles.markerContainer}>
+            <View style={styles.markerRoot}>
               <View style={[
                 styles.markerBubble,
                 selectedDevice?.id === device.id && styles.markerSelected
@@ -359,11 +359,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // Marker Styles
-  markerContainer: {
+  markerRoot: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 80,
-    height: 90,
+    width: 100,
+    height: 100,
+    backgroundColor: 'transparent', // Crucial for iOS
   },
   labelContainer: {
     backgroundColor: 'rgba(21, 21, 21, 0.8)',
