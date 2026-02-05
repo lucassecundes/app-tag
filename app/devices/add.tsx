@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
-import { ArrowLeft, QrCode, Type, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, QrCode, Type, CheckCircle, ShoppingBag } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -17,6 +17,34 @@ export default function AddDeviceScreen() {
   const [loading, setLoading] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [fetchingProduct, setFetchingProduct] = useState(false);
+
+  useEffect(() => {
+    fetchProductCheckout();
+  }, []);
+
+  const fetchProductCheckout = async () => {
+    setFetchingProduct(true);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('checkout_link')
+        .eq('id', 'a8244447-dbeb-4163-bc2c-dbe696b36b33')
+        .single();
+
+      if (error) throw error;
+      if (data?.checkout_link) {
+        setCheckoutUrl(data.checkout_link);
+      }
+    } catch (error: any) {
+      if (error.code !== 'PGRST116') {
+        console.error('Erro ao buscar link de checkout:', error);
+      }
+    } finally {
+      setFetchingProduct(false);
+    }
+  };
 
   useEffect(() => {
     if (mode === 'camera' && !permission?.granted) {
@@ -33,7 +61,7 @@ export default function AddDeviceScreen() {
 
   const handleSave = async () => {
     console.log('Iniciando vínculo de dispositivo...');
-    
+
     if (!tagId.trim() || !deviceName.trim()) {
       Alert.alert('Campos Obrigatórios', 'Por favor, preencha o ID da TAG e dê um nome ao dispositivo.');
       return;
@@ -80,8 +108,26 @@ export default function AddDeviceScreen() {
     }
   };
 
+  const handleBuyTag = async () => {
+    if (!checkoutUrl) {
+      Alert.alert('Link Indisponível', 'O link para aquisição da TAG não está disponível no momento. Por favor, tente novamente mais tarde.');
+      return;
+    }
+
+    try {
+      const supported = await Linking.canOpenURL(checkoutUrl);
+      if (supported) {
+        await Linking.openURL(checkoutUrl);
+      } else {
+        Alert.alert('Erro', 'Não foi possível abrir o link de compra.');
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar abrir o checkout.');
+    }
+  };
+
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
@@ -93,15 +139,15 @@ export default function AddDeviceScreen() {
       </View>
 
       <View style={styles.tabs}>
-        <TouchableOpacity 
-          style={[styles.tab, mode === 'manual' && styles.activeTab]} 
+        <TouchableOpacity
+          style={[styles.tab, mode === 'manual' && styles.activeTab]}
           onPress={() => setMode('manual')}
         >
           <Type size={20} color={mode === 'manual' ? Colors.white : Colors.textSecondary} />
           <Text style={[styles.tabText, mode === 'manual' && styles.activeTabText]}>Manual</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, mode === 'camera' && styles.activeTab]} 
+        <TouchableOpacity
+          style={[styles.tab, mode === 'camera' && styles.activeTab]}
           onPress={() => {
             setMode('camera');
             setScanned(false);
@@ -136,7 +182,7 @@ export default function AddDeviceScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.form}>
             <Text style={styles.label}>Informações do Dispositivo</Text>
-            
+
             <Input
               label="ID da TAG / Serial"
               placeholder="Ex: TAG-123456"
@@ -161,11 +207,19 @@ export default function AddDeviceScreen() {
               </Text>
             </View>
 
-            <Button 
-              title="VINCULAR DISPOSITIVO" 
-              onPress={handleSave} 
+            <Button
+              title="VINCULAR DISPOSITIVO"
+              onPress={handleSave}
               loading={loading}
               style={styles.submitButton}
+            />
+
+            <Button
+              title="ADQUIRIR NOVA TAG"
+              onPress={handleBuyTag}
+              variant="outline"
+              icon={<ShoppingBag size={20} color={Colors.primary} />}
+              style={styles.buyButton}
             />
           </View>
         </ScrollView>
@@ -253,6 +307,9 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 'auto',
+    marginBottom: 12,
+  },
+  buyButton: {
     marginBottom: 20,
   },
   cameraContainer: {

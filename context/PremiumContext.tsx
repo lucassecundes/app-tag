@@ -5,12 +5,14 @@ import { supabase } from '../lib/supabase';
 
 type PremiumContextType = {
   isPremium: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   refreshPremiumStatus: () => Promise<void>;
 };
 
 const PremiumContext = createContext<PremiumContextType>({
   isPremium: false,
+  isAdmin: false,
   isLoading: true,
   refreshPremiumStatus: async () => {},
 });
@@ -20,11 +22,13 @@ export const usePremium = () => useContext(PremiumContext);
 export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session } = useAuth();
   const [isPremium, setIsPremium] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshPremiumStatus = async () => {
     if (!session?.user?.id) {
       setIsPremium(false);
+      setIsAdmin(false);
       setIsLoading(false);
       return;
     }
@@ -38,17 +42,20 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .single();
 
       if (userData?.role === 'admin') {
+        setIsAdmin(true);
         setIsPremium(true);
         setIsLoading(false);
         return;
       }
 
+      setIsAdmin(false);
       // 2. Se não for admin, verifica status normal
       const status = await checkPremiumStatus(session.user.id);
       setIsPremium(status);
     } catch (error) {
       console.error('Error refreshing premium status:', error);
       setIsPremium(false);
+      setIsAdmin(false);
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +66,7 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [session?.user?.id]);
 
   return (
-    <PremiumContext.Provider value={{ isPremium, isLoading, refreshPremiumStatus }}>
+    <PremiumContext.Provider value={{ isPremium, isAdmin, isLoading, refreshPremiumStatus }}>
       {children}
     </PremiumContext.Provider>
   );

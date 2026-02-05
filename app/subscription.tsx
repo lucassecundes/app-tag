@@ -98,7 +98,8 @@ export default function SubscriptionScreen() {
     'Acesso ilimitado ao histórico de localização',
     'Todas os alertas do sistema desbloqueados',
     'Monitoramento de múltiplos dispositivos',
-    'Suporte prioritário'
+    'Suporte prioritário',
+    'Assistente de IA'
   ];
 
   if (isLoading) {

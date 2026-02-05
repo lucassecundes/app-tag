@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { Mail, Lock, User, ArrowLeft, Tag } from 'lucide-react-native';
+import { Mail, Lock, User, ArrowLeft, Tag, Phone } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -14,12 +14,13 @@ export default function RegisterScreen() {
   const tagId = params.tagId as string;
 
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
+    if (!name || !phone || !email || !password) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
@@ -33,6 +34,7 @@ export default function RegisterScreen() {
       options: {
         data: {
           full_name: name,
+          phone: phone,
         },
       },
     });
@@ -126,6 +128,14 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={setName}
             icon={<User size={20} color={Colors.textSecondary} />}
+          />
+
+          <Input
+            placeholder="Número de celular"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            icon={<Phone size={20} color={Colors.textSecondary} />}
           />
 
           <Input

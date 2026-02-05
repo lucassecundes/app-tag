@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, LogIn } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
@@ -68,9 +68,12 @@ export default function LoginScreen() {
             icon={<Lock size={20} color={Colors.textSecondary} />}
           />
 
-          <View style={styles.forgotPassword}>
+          <TouchableOpacity 
+            style={styles.forgotPassword} 
+            onPress={() => router.push('/(auth)/forgot-password')}
+          >
             <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
-          </View>
+          </TouchableOpacity>
 
           <Button 
             title="ENTRAR" 

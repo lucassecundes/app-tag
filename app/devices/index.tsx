@@ -6,6 +6,7 @@ import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
+import { Image } from 'react-native';
 
 export default function MyDevicesScreen() {
   const { user } = useAuth();
@@ -13,6 +14,8 @@ export default function MyDevicesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const fetchDevices = async () => {
     if (!user) return;
@@ -95,7 +98,19 @@ export default function MyDevicesScreen() {
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <View style={styles.cardIcon}>
-        {getIcon(item.type)}
+        {item.imagem_url && !imageErrors[item.id] ? (
+          <Image 
+            source={{ uri: item.imagem_url }} 
+            style={styles.deviceImage}
+            resizeMode="cover"
+            onError={() => {
+              console.log(`Erro ao carregar imagem para o dispositivo ${item.id}`);
+              setImageErrors(prev => ({ ...prev, [item.id]: true }));
+            }}
+          />
+        ) : (
+          getIcon(item.icone)
+        )}
       </View>
       <View style={styles.cardContent}>
         {/* Alterado de item.name para item.nome */}
@@ -244,6 +259,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    overflow: 'hidden',
+  },
+  deviceImage: {
+    width: 48,
+    height: 48,
   },
   cardContent: {
     flex: 1,

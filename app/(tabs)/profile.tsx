@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
-import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone } from 'lucide-react-native';
+import { usePremium } from '../../context/PremiumContext';
+import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, Crown, CreditCard } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -10,6 +11,7 @@ import Constants from 'expo-constants';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const { isPremium } = usePremium();
   const [userName, setUserName] = useState<string>('Usuário');
   const [userData, setUserData] = useState<any>(null);
 
@@ -63,6 +65,11 @@ export default function ProfileScreen() {
           <Text style={styles.avatarText}>
             {user?.email?.substring(0, 2).toUpperCase() || 'US'}
           </Text>
+          {isPremium && (
+            <View style={styles.premiumBadge}>
+              <Crown size={12} color="#000" fill="#000" />
+            </View>
+          )}
         </View>
         <Text style={styles.userName}>{userName}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
@@ -129,6 +136,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 2,
     borderColor: Colors.primary,
+  },
+  premiumBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: '#FFD700',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background,
   },
   avatarText: {
     fontSize: 24,

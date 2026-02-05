@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { MapView, Camera, PointAnnotation, StyleURL, ShapeSource, CircleLayer, FillLayer, LineLayer } from '../../components/ExternalMap';
-import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock, X } from 'lucide-react-native';
+import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock, X, Share2, Settings } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
@@ -12,6 +12,7 @@ import { usePremium } from '../../context/PremiumContext';
 import { useAuth } from '../../context/AuthContext';
 import { PremiumBadge } from '../../components/PremiumBadge';
 import { translateSupabaseError } from '../../lib/errorTranslator';
+import { Image } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 100; // Limite superior (não sobe tudo)
@@ -21,7 +22,7 @@ const PEEK_HEIGHT = 190; // Quanto aparece quando recolhido
 // Função auxiliar para criar círculo GeoJSON
 const createGeoJSONCircle = (center: [number, number], radiusInMeters: number, points = 64) => {
   if (!center || !center[0] || !center[1]) return null;
-  
+
   const coords = {
     latitude: center[1],
     longitude: center[0],
@@ -55,11 +56,13 @@ export default function DeviceDetailScreen() {
   const { id } = params;
   const { isPremium } = usePremium();
   const { user } = useAuth();
-  
+
   const [nome, setNome] = useState(params.nome as string || 'Dispositivo');
   const [type, setType] = useState('car');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  
+
   const initialLat = parseFloat(params.lat as string) || -23.550520;
   const initialLng = parseFloat(params.lng as string) || -46.633308;
 
@@ -68,19 +71,19 @@ export default function DeviceDetailScreen() {
   const [address, setAddress] = useState(params.address as string || 'Carregando endereço...');
   const [lastUpdate, setLastUpdate] = useState(new Date().toISOString());
   const [simulating, setSimulating] = useState(false);
-  
+
   // Estados dos Alertas
   const [alertaCerca, setAlertaCerca] = useState(false);
-  const [cercaCenter, setCercaCenter] = useState<{lat: number, lng: number} | null>(null);
-  
+  const [cercaCenter, setCercaCenter] = useState<{ lat: number, lng: number } | null>(null);
+
   const [alertaMovimento, setAlertaMovimento] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
-  
+
   // Schedule Modal State
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleStart, setScheduleStart] = useState('22:00');
   const [scheduleEnd, setScheduleEnd] = useState('06:00');
-  const [movimentoSchedule, setMovimentoSchedule] = useState<{start: string, end: string} | null>(null);
+  const [movimentoSchedule, setMovimentoSchedule] = useState<{ start: string, end: string } | null>(null);
 
   const cameraRef = useRef<any>(null);
 
@@ -154,11 +157,11 @@ export default function DeviceDetailScreen() {
 
     const subscription = supabase
       .channel(`device_detail_${id}`)
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'tags', 
-        filter: `id=eq.${id}` 
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'tags',
+        filter: `id=eq.${id}`
       }, (payload) => {
         console.log('Atualização em tempo real recebida:', payload.new);
         updateScreenData(payload.new);
@@ -173,6 +176,7 @@ export default function DeviceDetailScreen() {
   const updateScreenData = (data: any) => {
     if (data.nome) setNome(data.nome);
     if (data.icone) setType(data.icone);
+    if (data.imagem_url) setImageUrl(data.imagem_url);
 
     setAlertaCerca(data.alerta_cerca || false);
     if (data.cerca_lat && data.cerca_lng) {
@@ -217,7 +221,7 @@ export default function DeviceDetailScreen() {
     });
 
     const googleMapsUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${currentLocation.lat},${currentLocation.lng}`;
-    
+
     Linking.openURL(googleMapsUrl).catch(() => {
       if (url) Linking.openURL(url);
     });
@@ -246,7 +250,7 @@ export default function DeviceDetailScreen() {
     setLoadingAlerts(true);
     try {
       const updates: any = {};
-      
+
       if (type === 'cerca') {
         const newState = !alertaCerca;
         updates.alerta_cerca = newState;
@@ -291,7 +295,7 @@ export default function DeviceDetailScreen() {
 
     setLoadingAlerts(true);
     setShowScheduleModal(false);
-    
+
     try {
       const updates = {
         alerta_movimento: true,
@@ -324,7 +328,7 @@ export default function DeviceDetailScreen() {
     try {
       const latOffset = (Math.random() - 0.5) * 0.0025;
       const lngOffset = (Math.random() - 0.5) * 0.0025;
-      
+
       const newLat = currentLocation.lat + latOffset;
       const newLng = currentLocation.lng + lngOffset;
       const newDate = new Date().toISOString();
@@ -337,7 +341,7 @@ export default function DeviceDetailScreen() {
         endereco: mockAddress,
         data_hora: newDate
       });
-      
+
       if (histError) throw histError;
 
       const { error: tagError } = await supabase.from('tags').update({
@@ -362,7 +366,7 @@ export default function DeviceDetailScreen() {
     if (!dateString) return 'Desconhecido';
     const diff = new Date().getTime() - new Date(dateString).getTime();
     const minutes = Math.floor(diff / 60000);
-    
+
     if (minutes < 1) return 'Agora mesmo';
     if (minutes < 60) return `${minutes} min atrás`;
     const hours = Math.floor(minutes / 60);
@@ -371,20 +375,21 @@ export default function DeviceDetailScreen() {
   };
 
   const getMarkerIcon = () => {
+    const size = 24;
     switch (type) {
-      case 'car': return <Car size={16} color={Colors.white} />;
-      case 'moto': return <Bike size={16} color={Colors.white} />;
-      case 'truck': return <Truck size={16} color={Colors.white} />;
-      case 'bus': return <Bus size={16} color={Colors.white} />;
-      case 'object': return <Package size={16} color={Colors.white} />;
-      default: return <Smartphone size={16} color={Colors.white} />;
+      case 'car': return <Car size={size} color={Colors.white} />;
+      case 'moto': return <Bike size={size} color={Colors.white} />;
+      case 'truck': return <Truck size={size} color={Colors.white} />;
+      case 'bus': return <Bus size={size} color={Colors.white} />;
+      case 'object': return <Package size={size} color={Colors.white} />;
+      default: return <Smartphone size={size} color={Colors.white} />;
     }
   };
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       <MapView
         style={styles.map}
         styleURL={mapStyle}
@@ -399,23 +404,23 @@ export default function DeviceDetailScreen() {
             zoomLevel: 16,
           }}
         />
-        
+
         {fenceGeoJSON && (
           <ShapeSource id="fenceSource" shape={fenceGeoJSON}>
-            <FillLayer 
-              id="fenceFill" 
+            <FillLayer
+              id="fenceFill"
               style={{
                 fillColor: Colors.success,
                 fillOpacity: 0.2,
-              }} 
+              }}
             />
-            <LineLayer 
-              id="fenceLine" 
+            <LineLayer
+              id="fenceLine"
               style={{
                 lineColor: Colors.success,
                 lineWidth: 2,
                 lineDasharray: [2, 2],
-              }} 
+              }}
             />
           </ShapeSource>
         )}
@@ -426,15 +431,29 @@ export default function DeviceDetailScreen() {
         >
           <View style={styles.markerContainer}>
             <View style={[
-              styles.markerPulse, 
-              (alertaCerca || alertaMovimento) && { borderColor: Colors.error, backgroundColor: 'rgba(255, 68, 68, 0.3)' }
-            ]} />
-            <View style={[
-              styles.markerCore,
-              (alertaCerca || alertaMovimento) && { backgroundColor: Colors.error }
+              styles.markerBubble,
+              (alertaCerca || alertaMovimento) && { borderColor: Colors.error }
             ]}>
-              {getMarkerIcon()}
+              {imageUrl && !imageError ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={styles.markerImage}
+                  resizeMode="cover"
+                  onError={() => {
+                    console.log('Erro ao carregar imagem nos detalhes');
+                    setImageError(true);
+                  }}
+                />
+              ) : (
+                <View style={styles.iconContainer}>
+                  {getMarkerIcon()}
+                </View>
+              )}
             </View>
+            <View style={[
+              styles.markerArrow,
+              (alertaCerca || alertaMovimento) && { borderTopColor: Colors.error }
+            ]} />
           </View>
         </PointAnnotation>
       </MapView>
@@ -444,7 +463,7 @@ export default function DeviceDetailScreen() {
           <ArrowLeft size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{nome}</Text>
-        <View style={{ width: 40 }} /> 
+        <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.controlsContainer}>
@@ -456,9 +475,32 @@ export default function DeviceDetailScreen() {
           <Eye size={24} color={Colors.text} />
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={() => {
+            if (!isPremium) {
+              Alert.alert(
+                'Recurso Premium',
+                'O compartilhamento de localização em tempo real está disponível apenas para assinantes Premium.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Ver Planos', onPress: () => router.push('/subscription') }
+                ]
+              );
+              return;
+            }
+            router.push({
+              pathname: '/device-detail/share' as any,
+              params: { id, nome }
+            });
+          }}
+        >
+          <Share2 size={24} color={Colors.text} />
+        </TouchableOpacity>
+
         {isAdmin && (
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: Colors.primary, borderColor: Colors.primary }]} 
+          <TouchableOpacity
+            style={[styles.controlButton, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
             onPress={simulateMovement}
             disabled={simulating}
           >
@@ -486,7 +528,7 @@ export default function DeviceDetailScreen() {
                 <X size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.modalDesc}>
               Defina o horário em que o movimento não é permitido (ex: noite).
               Se a tag sair do raio de 100m neste horário, um alerta será gerado.
@@ -519,8 +561,8 @@ export default function DeviceDetailScreen() {
               </View>
             </View>
 
-            <Button 
-              title="ATIVAR MONITORAMENTO" 
+            <Button
+              title="ATIVAR MONITORAMENTO"
               onPress={confirmSchedule}
               loading={loadingAlerts}
             />
@@ -533,7 +575,7 @@ export default function DeviceDetailScreen() {
           <View style={styles.dragHandleContainer}>
             <View style={styles.dragHandle} />
           </View>
-          
+
           {/* Conteúdo Visível Inicialmente (Peek) */}
           <View style={styles.peekContent}>
             <View style={styles.infoRow}>
@@ -564,9 +606,9 @@ export default function DeviceDetailScreen() {
 
             <Text style={styles.sectionTitle}>Monitoramento e Segurança</Text>
             <View style={styles.alertsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.alertCard, 
+                  styles.alertCard,
                   alertaCerca && styles.alertCardActive,
                   !isPremium && styles.alertCardDisabled
                 ]}
@@ -575,7 +617,7 @@ export default function DeviceDetailScreen() {
               >
                 <View style={styles.alertHeader}>
                   <View style={[
-                    styles.alertIconBox, 
+                    styles.alertIconBox,
                     alertaCerca && styles.alertIconBoxActive,
                     !isPremium && styles.alertIconBoxDisabled
                   ]}>
@@ -593,9 +635,9 @@ export default function DeviceDetailScreen() {
                 <Text style={styles.alertDesc}>Raio de 100m</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.alertCard, 
+                  styles.alertCard,
                   alertaMovimento && styles.alertCardActive,
                   !isPremium && styles.alertCardDisabled
                 ]}
@@ -604,7 +646,7 @@ export default function DeviceDetailScreen() {
               >
                 <View style={styles.alertHeader}>
                   <View style={[
-                    styles.alertIconBox, 
+                    styles.alertIconBox,
                     alertaMovimento && styles.alertIconBoxActive,
                     !isPremium && styles.alertIconBoxDisabled
                   ]}>
@@ -620,21 +662,30 @@ export default function DeviceDetailScreen() {
                 </View>
                 <Text style={[styles.alertTitle, alertaMovimento && styles.alertTitleActive]}>Movimento</Text>
                 <Text style={styles.alertDesc}>
-                  {alertaMovimento && movimentoSchedule 
+                  {alertaMovimento && movimentoSchedule
                     ? `${movimentoSchedule.start} - ${movimentoSchedule.end}`
                     : 'Fora de Horário'}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <Button 
-              title="Ver Histórico Completo" 
+            <Button
+              title="Ver Histórico Completo"
               onPress={() => router.push('/(tabs)/history')}
               variant="outline"
               style={{ marginTop: 24 }}
             />
-            
-            <View style={{ height: 40 }} /> 
+
+            <Button
+              title="Configurações do Dispositivo"
+              onPress={() => router.push({ pathname: '/devices/edit', params: { id } })}
+              variant="outline"
+              style={{ marginTop: 12, borderColor: Colors.border }}
+              textStyle={{ color: Colors.textSecondary }}
+              icon={<Settings size={20} color={Colors.textSecondary} />}
+            />
+
+            <View style={{ height: 40 }} />
           </View>
         </Animated.View>
       </GestureDetector>
@@ -681,28 +732,56 @@ const styles = StyleSheet.create({
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 60,
-    height: 60,
+    width: 100,
+    height: 100,
   },
-  markerPulse: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 122, 0, 0.3)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 122, 0, 0.5)',
+  // markerPulse removed
+  markerBubble: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.white,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+    elevation: 6,
+    zIndex: 2,
+    overflow: 'hidden',
+    marginTop: 10,
   },
-  markerCore: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  markerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  iconContainer: {
+    width: '100%',
+    height: '100%',
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.white,
-    zIndex: 2,
+  },
+  markerArrow: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 0,
+    borderTopWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: Colors.white,
+    marginTop: -1,
+    zIndex: 1,
   },
   controlsContainer: {
     position: 'absolute',
@@ -738,7 +817,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     minWidth: 40,
   },
-  
+
   // Bottom Sheet Styles
   bottomSheet: {
     position: 'absolute',

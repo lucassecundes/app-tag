@@ -48,7 +48,7 @@ export default function AlertsScreen() {
         title: item.tags?.nome || 'Dispositivo',
         message: item.mensagem,
         type: item.tipo === 'cerca' ? 'geofence' : item.tipo, // Mapear 'cerca' para 'geofence' para o ícone
-        created_at: item.data_hora,
+        created_at: item.data_hora || item.created_at, // Fallback recomendado
         tag_id: item.tag_id,
         // latitude/longitude não existem na tabela alertas diretamente, 
         // idealmente o trigger deveria copiar da historico_tags ou a gente busca a ultima posição da tag

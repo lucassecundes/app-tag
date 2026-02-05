@@ -1,17 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, Link } from 'expo-router';
-import { ArrowLeft, QrCode, Type, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, QrCode, Type, ChevronRight, ShoppingBag } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { supabase } from '../../lib/supabase';
 
 export default function ScanTagScreen() {
   const [mode, setMode] = useState<'manual' | 'camera'>('camera');
   const [tagId, setTagId] = useState('');
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProductCheckout();
+  }, []);
+
+  const fetchProductCheckout = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('checkout_link')
+        .eq('id', 'a8244447-dbeb-4163-bc2c-dbe696b36b33')
+        .single();
+
+      if (error) throw error;
+      if (data?.checkout_link) {
+        setCheckoutUrl(data.checkout_link);
+      }
+    } catch (error: any) {
+      if (error.code !== 'PGRST116') {
+        console.error('Erro ao buscar link de checkout:', error);
+      }
+    }
+  };
 
   useEffect(() => {
     if (mode === 'camera' && !permission?.granted) {
@@ -38,6 +63,24 @@ export default function ScanTagScreen() {
     router.push({ pathname: '/register', params: { tagId: id } });
   };
 
+  const handleBuyTag = async () => {
+    if (!checkoutUrl) {
+      Alert.alert('Link Indisponível', 'O link para aquisição da TAG não está disponível no momento. Por favor, tente novamente mais tarde.');
+      return;
+    }
+
+    try {
+      const supported = await Linking.canOpenURL(checkoutUrl);
+      if (supported) {
+        await Linking.openURL(checkoutUrl);
+      } else {
+        Alert.alert('Erro', 'Não foi possível abrir o link de compra.');
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar abrir o checkout.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -55,8 +98,8 @@ export default function ScanTagScreen() {
       </Text>
 
       <View style={styles.tabs}>
-        <TouchableOpacity 
-          style={[styles.tab, mode === 'camera' && styles.activeTab]} 
+        <TouchableOpacity
+          style={[styles.tab, mode === 'camera' && styles.activeTab]}
           onPress={() => {
             setMode('camera');
             setScanned(false);
@@ -65,8 +108,8 @@ export default function ScanTagScreen() {
           <QrCode size={20} color={mode === 'camera' ? Colors.white : Colors.textSecondary} />
           <Text style={[styles.tabText, mode === 'camera' && styles.activeTabText]}>Escanear</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, mode === 'manual' && styles.activeTab]} 
+        <TouchableOpacity
+          style={[styles.tab, mode === 'manual' && styles.activeTab]}
           onPress={() => setMode('manual')}
         >
           <Type size={20} color={mode === 'manual' ? Colors.white : Colors.textSecondary} />
@@ -103,11 +146,19 @@ export default function ScanTagScreen() {
             autoCapitalize="characters"
             icon={<QrCode size={20} color={Colors.textSecondary} />}
           />
-          <Button 
-            title="CONTINUAR" 
+          <Button
+            title="CONTINUAR"
             onPress={() => proceedToRegister(tagId)}
             icon={<ChevronRight size={20} color={Colors.white} />}
             style={{ marginTop: 24 }}
+          />
+
+          <Button
+            title="ADQUIRIR NOVA TAG"
+            onPress={handleBuyTag}
+            variant="outline"
+            icon={<ShoppingBag size={20} color={Colors.primary} />}
+            style={{ marginTop: 12 }}
           />
         </View>
       )}

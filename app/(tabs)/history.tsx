@@ -19,7 +19,7 @@ type FilterType = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 
 export default function HistoryScreen() {
   const { user } = useAuth();
-  const { isPremium } = usePremium();
+  const { isPremium, isAdmin } = usePremium();
   const params = useLocalSearchParams();
   const filterTagId = params.tagId as string;
 
@@ -57,26 +57,44 @@ export default function HistoryScreen() {
             nome,
             usuario_id
           )
-        `)
-        .eq('tags.usuario_id', user.id)
-        .order('data_hora', { ascending: false })
-        .limit(200); 
+        `);
+
+      // Se não for admin OU se não estiver filtrando uma tag específica, 
+      // garante que só veja as próprias tags
+      if (!isAdmin || !filterTagId) {
+        query = query.eq('tags.usuario_id', user.id);
+      }
 
       if (filterTagId) {
         query = query.eq('tag_id', filterTagId);
       }
 
+      // Ordenação: Tenta data_hora, mas se falhar (ex: campo nulo em registros antigos)
+      // a query pode não ser eficiente. O ideal é ordenar no banco.
+      query = query.order('data_hora', { ascending: false, nullsFirst: false });
+
       // Restrição para usuários não-premium: Apenas 30 dias
       if (!isPremium) {
         const thirtyDaysAgo = subDays(new Date(), 30);
+        // Fallback: se data_hora for nulo, o filtro gte pode falhar dependendo do registro.
+        // Mas registros novos sempre terão data_hora.
         query = query.gte('data_hora', thirtyDaysAgo.toISOString());
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(200);
 
       if (error) throw error;
 
-      const dataList = data || [];
+      // Aplicar Fallback de data localmente e garantir ordenação consistente
+      const dataList = (data || []).map(item => ({
+        ...item,
+        // Fallback recomendado: data_hora ?? created_at
+        display_date: item.data_hora || item.created_at
+      })).sort((a, b) => {
+        // Garantir ordenação correta mesmo com fallback
+        return new Date(b.display_date).getTime() - new Date(a.display_date).getTime();
+      });
+
       setHistory(dataList);
       applyFilter(activeFilter, dataList);
       
@@ -152,7 +170,7 @@ export default function HistoryScreen() {
     }
 
     const filtered = dataToFilter.filter(item => {
-      const itemDate = parseISO(item.data_hora);
+      const itemDate = parseISO(item.display_date);
       return isWithinInterval(itemDate, { start, end });
     });
 
@@ -230,7 +248,7 @@ export default function HistoryScreen() {
 
     // Ordenar cronologicamente para desenhar a linha corretamente
     const sortedPoints = [...filteredHistory].sort((a, b) => 
-      new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()
+      new Date(a.display_date).getTime() - new Date(b.display_date).getTime()
     );
 
     const coordinates = sortedPoints
@@ -298,9 +316,9 @@ export default function HistoryScreen() {
         <View style={styles.itemHeader}>
           <View style={styles.deviceInfo}>
             <Text style={styles.deviceName}>{item.tags?.nome || 'Dispositivo'}</Text>
-            <Text style={styles.itemTime}>{formatTime(item.data_hora)}</Text>
+            <Text style={styles.itemTime}>{formatTime(item.display_date)}</Text>
           </View>
-          <Text style={styles.itemDate}>{formatDate(item.data_hora)}</Text>
+          <Text style={styles.itemDate}>{formatDate(item.display_date)}</Text>
         </View>
         
         <View style={styles.addressContainer}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView, Animated, Easing } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { Send, ArrowLeft, Bot, User, Sparkles } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
@@ -61,6 +62,7 @@ const WelcomeView = () => (
 export default function ChatScreen() {
   const { user } = useAuth();
   const { isPremium } = usePremium();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -191,7 +193,11 @@ export default function ChatScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : (
-        <>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          style={{ flex: 1 }}
+        >
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -222,34 +228,32 @@ export default function ChatScreen() {
             </View>
           )}
 
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
-          >
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Digite sua mensagem..."
-                value={inputText}
-                onChangeText={setInputText}
-                placeholderTextColor={Colors.textSecondary}
-                multiline
-                maxLength={500}
-              />
-              <TouchableOpacity 
-                style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}
-                onPress={() => handleSend()}
-                disabled={!inputText.trim() || loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
-                ) : (
-                  <Send size={20} color={Colors.white} />
-                )}
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </>
+          <View style={[
+            styles.inputContainer,
+            { paddingBottom: Math.max(insets.bottom, 16) }
+          ]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Digite sua mensagem..."
+              value={inputText}
+              onChangeText={setInputText}
+              placeholderTextColor={Colors.textSecondary}
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity 
+              style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}
+              onPress={() => handleSend()}
+              disabled={!inputText.trim() || loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Send size={20} color={Colors.white} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       )}
     </View>
   );
@@ -355,7 +359,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,

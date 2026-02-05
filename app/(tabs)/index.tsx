@@ -11,6 +11,7 @@ import { ChatIcon } from '../../components/ChatIcon';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { translateSupabaseError } from '../../lib/errorTranslator';
+import { Image } from 'react-native';
 
 export default function DeviceListScreen() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export default function DeviceListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [firstName, setFirstName] = useState('Usuário');
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   // Admin Filter States
   const [isAdmin, setIsAdmin] = useState(false);
@@ -265,7 +267,19 @@ export default function DeviceListScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.cardIcon}>
-          {getIcon(item.icone)}
+          {item.imagem_url && !imageErrors[item.id] ? (
+            <Image 
+              source={{ uri: item.imagem_url }} 
+              style={styles.deviceImage} 
+              resizeMode="cover"
+              onError={() => {
+                console.log(`Erro ao carregar imagem para o dispositivo ${item.id}`);
+                setImageErrors(prev => ({ ...prev, [item.id]: true }));
+              }}
+            />
+          ) : (
+            getIcon(item.icone)
+          )}
         </View>
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{item.nome || 'Dispositivo sem nome'}</Text>
@@ -540,6 +554,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    overflow: 'hidden',
+  },
+  deviceImage: {
+    width: 48,
+    height: 48,
   },
   cardContent: {
     flex: 1,

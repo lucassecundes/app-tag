@@ -1,22 +1,39 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { MapView, Camera, PointAnnotation, StyleURL } from '../../components/ExternalMap';
-import { Car, Truck, Bike, Bus, Package, Smartphone, ArrowRight, Layers } from 'lucide-react-native';
+import { Car, Truck, Bike, Bus, Package, Smartphone, ArrowRight, Layers, Share2, ArrowLeft } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { usePremium } from '../../context/PremiumContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'react-native';
+import { useNavigation } from 'expo-router';
 
 export default function GlobalMapScreen() {
   const { user } = useAuth();
+  const { isPremium } = usePremium();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const cameraRef = useRef<any>(null);
-  
+
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: { display: 'none' },
+    });
+    return () => {
+      navigation.setOptions({
+        tabBarStyle: undefined,
+      });
+    };
+  }, [navigation]);
+
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapStyle, setMapStyle] = useState(StyleURL.Dark);
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const fetchDevices = async () => {
     if (!user) return;
@@ -28,7 +45,7 @@ export default function GlobalMapScreen() {
         .select('role')
         .eq('auth_user_id', user.id)
         .single();
-        
+
       let query = supabase
         .from('tags')
         .select('*')
@@ -37,7 +54,7 @@ export default function GlobalMapScreen() {
       if (userData?.role !== 'admin') {
         query = query.eq('usuario_id', user.id);
       }
-      
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -45,7 +62,7 @@ export default function GlobalMapScreen() {
       // Filtra apenas dispositivos com localização válida
       const validDevices = (data || []).filter(d => d.ultima_lat && d.ultima_lng);
       setDevices(validDevices);
-      
+
       // Ajusta câmera para mostrar todos os dispositivos
       if (validDevices.length > 0 && cameraRef.current) {
         fitToDevices(validDevices);
@@ -71,7 +88,7 @@ export default function GlobalMapScreen() {
         setDevices(current => {
           const updated = payload.new;
           if (!updated.ultima_lat || !updated.ultima_lng) return current;
-          
+
           const exists = current.find(d => d.id === updated.id);
           if (exists) {
             return current.map(d => d.id === updated.id ? updated : d);
@@ -102,7 +119,7 @@ export default function GlobalMapScreen() {
 
     // Calcula bounds simples
     let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-    
+
     deviceList.forEach(d => {
       const lat = parseFloat(d.ultima_lat);
       const lng = parseFloat(d.ultima_lng);
@@ -115,7 +132,7 @@ export default function GlobalMapScreen() {
     // Adiciona margem
     const latDelta = maxLat - minLat;
     const lngDelta = maxLng - minLng;
-    
+
     cameraRef.current.fitBounds(
       [maxLng + lngDelta * 0.1, maxLat + latDelta * 0.1], // NorthEast
       [minLng - lngDelta * 0.1, minLat - latDelta * 0.1], // SouthWest
@@ -125,7 +142,7 @@ export default function GlobalMapScreen() {
   };
 
   const getMarkerIcon = (type: string) => {
-    const size = 16;
+    const size = 24;
     const color = Colors.white;
     switch (type) {
       case 'car': return <Car size={size} color={color} />;
@@ -138,7 +155,7 @@ export default function GlobalMapScreen() {
   };
 
   const toggleMapStyle = () => {
-    setMapStyle(prev => prev === StyleURL.Dark ? StyleURL.SatelliteStreet : StyleURL.Dark);
+    setMapStyle((prev: string) => prev === StyleURL.Dark ? StyleURL.SatelliteStreet : StyleURL.Dark);
   };
 
   const handleMarkerPress = (device: any) => {
@@ -157,10 +174,10 @@ export default function GlobalMapScreen() {
     if (selectedDevice) {
       router.push({
         pathname: '/device-detail/[id]',
-        params: { 
+        params: {
           id: selectedDevice.id,
           nome: selectedDevice.nome,
-          lat: selectedDevice.ultima_lat, 
+          lat: selectedDevice.ultima_lat,
           lng: selectedDevice.ultima_lng,
           address: selectedDevice.endereco
         }
@@ -179,7 +196,7 @@ export default function GlobalMapScreen() {
         onPress={() => setSelectedDevice(null)} // Deseleciona ao clicar no mapa
       >
         <Camera ref={cameraRef} />
-        
+
         {devices.map(device => (
           <PointAnnotation
             key={device.id}
@@ -188,22 +205,42 @@ export default function GlobalMapScreen() {
             onSelected={() => handleMarkerPress(device)}
           >
             <View style={styles.markerContainer}>
+              <View style={[
+                styles.markerBubble,
+                selectedDevice?.id === device.id && styles.markerSelected
+              ]}>
+                {device.imagem_url && !imageErrors[device.id] ? (
+                  <Image
+                    source={{ uri: device.imagem_url }}
+                    style={styles.markerImage}
+                    resizeMode="cover"
+                    onError={() => {
+                      console.log(`Erro ao carregar imagem no mapa para ${device.id}`);
+                      setImageErrors(prev => ({ ...prev, [device.id]: true }));
+                    }}
+                  />
+                ) : (
+                  <View style={styles.iconContainer}>
+                    {getMarkerIcon(device.icone)}
+                  </View>
+                )}
+              </View>
+              <View style={[
+                styles.markerArrow,
+                selectedDevice?.id === device.id && { borderTopColor: Colors.success }
+              ]} />
               <View style={styles.labelContainer}>
                 <Text style={styles.labelText} numberOfLines={1}>{device.nome}</Text>
               </View>
-              <View style={[
-                styles.markerCore,
-                selectedDevice?.id === device.id && styles.markerSelected
-              ]}>
-                {getMarkerIcon(device.icone)}
-              </View>
-              <View style={styles.markerStem} />
             </View>
           </PointAnnotation>
         ))}
       </MapView>
 
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ArrowLeft size={24} color={Colors.white} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Mapa Global</Text>
         <TouchableOpacity style={styles.layerButton} onPress={toggleMapStyle}>
           <Layers size={20} color={Colors.text} />
@@ -215,7 +252,18 @@ export default function GlobalMapScreen() {
         <View style={[styles.deviceCard, { bottom: 100 }]}>
           <View style={styles.deviceInfo}>
             <View style={styles.iconBox}>
-              {getMarkerIcon(selectedDevice.icone)}
+              {selectedDevice.imagem_url && !imageErrors[selectedDevice.id] ? (
+                <Image
+                  source={{ uri: selectedDevice.imagem_url }}
+                  style={styles.cardImage}
+                  resizeMode="cover"
+                  onError={() => {
+                    setImageErrors(prev => ({ ...prev, [selectedDevice.id]: true }));
+                  }}
+                />
+              ) : (
+                getMarkerIcon(selectedDevice.icone)
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.deviceName}>{selectedDevice.nome}</Text>
@@ -224,11 +272,36 @@ export default function GlobalMapScreen() {
               </Text>
             </View>
           </View>
-          
-          <TouchableOpacity style={styles.detailButton} onPress={navigateToDetail}>
-            <Text style={styles.detailButtonText}>Ver Detalhes</Text>
-            <ArrowRight size={16} color={Colors.white} />
-          </TouchableOpacity>
+
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={styles.shareIconButton}
+              onPress={() => {
+                if (!isPremium) {
+                  Alert.alert(
+                    'Recurso Premium',
+                    'O compartilhamento de localização em tempo real está disponível apenas para assinantes Premium.',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      { text: 'Ver Planos', onPress: () => router.push('/subscription') }
+                    ]
+                  );
+                  return;
+                }
+                router.push({
+                  pathname: '/device-detail/share' as any,
+                  params: { id: selectedDevice.id, nome: selectedDevice.nome }
+                });
+              }}
+            >
+              <Share2 size={20} color={Colors.text} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.detailButton} onPress={navigateToDetail}>
+              <Text style={styles.detailButtonText}>Ver Detalhes</Text>
+              <ArrowRight size={16} color={Colors.white} />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -279,48 +352,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 4,
   },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   // Marker Styles
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 100, // Área de toque maior
-    height: 80,
+    width: 80,
+    height: 90,
   },
   labelContainer: {
-    backgroundColor: 'rgba(21, 21, 21, 0.9)',
+    backgroundColor: 'rgba(21, 21, 21, 0.8)',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 4,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginTop: 4,
   },
   labelText: {
     color: Colors.white,
     fontSize: 10,
     fontFamily: 'Poppins_500Medium',
+    fontWeight: '600',
   },
-  markerCore: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  markerBubble: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.white,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+    elevation: 6,
+    zIndex: 2,
+    overflow: 'hidden',
+  },
+  markerSelected: {
+    borderColor: Colors.success,
+    transform: [{ scale: 1.1 }],
+  },
+  markerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  iconContainer: {
+    width: '100%',
+    height: '100%',
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.white,
-    zIndex: 2,
-    elevation: 4,
   },
-  markerSelected: {
-    backgroundColor: Colors.success, // Muda cor quando selecionado
-    transform: [{ scale: 1.2 }],
-  },
-  markerStem: {
-    width: 2,
-    height: 10, // "Perna" do marcador se quiser estilo pin, aqui está oculto/pequeno
+  markerArrow: {
+    width: 0,
+    height: 0,
     backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 0,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: Colors.white,
+    marginTop: -1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    zIndex: 1,
   },
+  // Removed old styles: markerCore, markerStem
   // Device Card Styles
   deviceCard: {
     position: 'absolute',
@@ -350,6 +462,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  cardImage: {
+    width: 48,
+    height: 48,
   },
   deviceName: {
     fontSize: 16,
@@ -363,6 +480,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   detailButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -370,6 +488,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     gap: 8,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shareIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   detailButtonText: {
     fontSize: 14,

@@ -1,0 +1,74 @@
+# Documentação: Atualizações Mobile e Plano Premium (Integração Web)
+
+Este documento descreve as recentes implementações no aplicativo mobile e detalha as regras de negócio do plano Premium para alinhamento com o desenvolvimento do painel Web.
+
+## 1. Novas Funcionalidades (Mobile)
+
+### 1.1 Identificação Visual Premium
+- **App Mobile:** Usuários com assinatura ativa agora exibem um ícone de **coroa dourada** ao lado de suas iniciais na tela de Perfil (`ProfileScreen`).
+- **Web (Requisito):** O painel administrativo e a área do cliente no site devem replicar essa identificação visual para consistência.
+
+### 1.2 Gerenciamento de Assinaturas
+- **Nova Tela:** "Minhas Assinaturas" (`SubscriptionsScreen`).
+- **Funcionalidade:** Lista planos ativos e inativos vindos da tabela `plans_assinar`.
+- **Cancelamento:** O botão de cancelar não executa uma ação direta no banco. Ele redireciona para o WhatsApp do suporte (`wa.me/556740420408`) com a mensagem: *"Olá, gostaria de cancelar minha assinatura."*
+- **Web (Requisito):** A área do cliente web deve oferecer a mesma visualização de status e o mesmo fluxo de cancelamento (link para WhatsApp) para evitar churn automático sem retenção humana.
+
+---
+
+## 2. Regras de Negócio: Plano Premium
+
+### 2.1 Benefícios Listados
+O plano Premium oferece os seguintes recursos, que devem ser respeitados e habilitados tanto no App quanto na Web:
+
+1.  **Acesso ilimitado ao histórico de localização:**
+    *   *Free:* Limitado (ex: últimas 24h ou X registros).
+    *   *Premium:* Acesso total aos dados da tabela `historico_tags`.
+2.  **Todos os alertas do sistema desbloqueados:**
+    *   *Free:* Acesso restrito a alertas básicos.
+    *   *Premium:* Acesso a cerca virtual, alerta de movimento, velocidade, etc.
+3.  **Monitoramento de múltiplos dispositivos:**
+    *   *Free:* Limite de 1 dispositivo (verificar regra atual no backend).
+    *   *Premium:* Sem limite de dispositivos vinculados.
+4.  **Suporte prioritário:**
+    *   Atendimento via canal exclusivo (WhatsApp).
+5.  **Assistente de IA:**
+    *   *Novo:* Funcionalidade de análise inteligente de rotas e comportamento (em desenvolvimento/implementação).
+
+### 2.2 Verificação de Status
+A verificação se um usuário é Premium deve seguir a lógica unificada:
+- Consultar a tabela `plans_assinar`.
+- Verificar se existe registro com `status = 'active'` E `expiration_date > NOW()`.
+- **Exceção Admin:** Usuários com `role = 'admin'` na tabela `usuario` possuem status Premium automático (bypass de pagamento).
+
+---
+
+## 3. Estrutura de Dados Relevante (Supabase)
+
+### Tabela `plans_assinar`
+Utilizada para listar as assinaturas na nova tela.
+
+| Coluna | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `user_id` | uuid | ID do usuário dono da assinatura |
+| `plan_id` | uuid | ID do plano contratado (tabela `planos`) |
+| `status` | text | 'active', 'cancelled', 'expired' |
+| `expiration_date` | timestamp | Data limite do acesso Premium |
+| `activation_date` | timestamp | Data de início |
+
+### Tabela `planos`
+Detalhes do produto.
+
+| Coluna | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `nome` | text | Ex: "Premium Mensal" |
+| `preco` | numeric | Valor cobrado |
+| `moeda` | text | "BRL", "USD" |
+
+---
+
+## 4. Integração Sugerida para Web
+
+1.  **Dashboard do Usuário:** Adicionar card "Assinatura" mostrando status e data de vencimento.
+2.  **Menu de Perfil:** Incluir badge Premium se ativo.
+3.  **Fluxo de Assinatura:** Utilizar o mesmo link de checkout da Cakto (`https://pay.cakto.com.br/...`) configurado no App para manter a base unificada.

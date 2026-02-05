@@ -1,0 +1,86 @@
+DOCUMENTAÇÃO TÉCNICA: FUNCIONALIDADE DE COMPARTILHAMENTO DE LOCALIZAÇÃO EM TEMPO REAL
+
+OBJETIVO:
+Implementar um sistema de compartilhamento de localização temporário via link público, com controle de validade e visualização de trilha (trail).
+
+---
+
+1. ESTRUTURA DE BANCO DE DATOS (SUPABASE / POSTGRES)
+
+Tabela: public.compartilhamentos
+- id: uuid (PK, default gen_random_uuid())
+- tag_id: uuid (FK -> public.tags.id, cascade delete)
+- usuario_id: uuid (FK -> auth.users.id, cascade delete)
+- token: text (Unique, indexado para busca rápida)
+- valido_de: timestamptz (Início da validade)
+- valido_ate: timestamptz (Fim da validade)
+- created_at: timestamptz (Default now())
+
+Segurança (RLS):
+- SELECT: Público pode ler se possuir o token (usado via RPC).
+- INSERT/UPDATE/DELETE: Restrito ao usuario_id (dono do link) que deve ser o dono da tag.
+
+---
+
+2. APIS E FUNÇÕES RPC (BACKEND)
+
+Para permitir acesso público sem autenticação via token, foram criadas funções com 'SECURITY DEFINER':
+
+A) public.get_shared_tag(token_text text)
+   - Retorna os dados da Tag vinculada ao token.
+   - Validação: Verifica se 'now()' está entre 'valido_de' e 'valido_ate'.
+   - Campos essenciais: nome, ultima_lat, ultima_lng, ultima_comunicacao, icone, endereco.
+
+B) public.get_shared_historico(token_text text, limit_count int)
+   - Retorna as últimas N posições da Tag.
+   - Recomendado: limit_count = 3 para a trilha (trail).
+   - Campos: latitude, longitude, data_hora.
+
+---
+
+3. FLUXO NO APP (LADO DO USUÁRIO QUE COMPARTILHA)
+
+A) Interface:
+   - Ícone de "Share" no mapa principal.
+   - Tela de configuração com inputs de data e hora (formato: dd/MM/yyyy HH:mm).
+
+B) Lógica:
+   - Gerar um Token único (UUID ou similar).
+   - Inserir na tabela 'compartilhamentos' o tag_id, usuario_id e o período de validade.
+   - Gerar a URL pública: {BASE_URL}/compartilhado/{token}
+
+C) Gestão:
+   - O usuário deve poder visualizar links ativos e excluir (revogar) o acesso a qualquer momento.
+
+---
+
+4. FLUXO NA WEB/PÚBLICO (LADO DE QUEM RECEBE O LINK)
+
+A) Acesso:
+   - Ao abrir a URL com o token, o App/Web deve chamar 'get_shared_tag(token)'.
+   - Se retornar vazio ou erro, exibir tela de "Link Expirado ou Inválido".
+
+B) Visualização do Mapa:
+   - Marcador principal na última posição da Tag.
+   - Trail (Trilha): Linha conectando as últimas 3 posições (obtidas via 'get_shared_historico').
+   - Marcadores secundários (pontos menores) nas posições do histórico para reforçar a trilha visual.
+
+C) Atualização em Tempo Real:
+   - Utilizar Supabase Realtime (Channels) para ouvir mudanças na tabela 'tags' filtrando pelo ID da tag obtida.
+   - Ao detectar mudança de latitude/longitude, atualizar a posição do marcador e recarregar o histórico (3 pontos) para mover a trilha.
+
+---
+
+5. REQUISITOS DE UX E ESTILO
+
+- Formato de Data: dd/MM/yyyy HH:mm.
+- Feedback Visual: Indicador pulsante no marcador principal.
+- Status do Link: Badge indicando "Ativo" ou "Expirado".
+- Responsividade: O mapa deve ocupar 100% da tela mobile, com cards de informação flutuantes ou em bottom sheets.
+
+---
+
+CONSIDERAÇÕES PARA O APP NATIVO:
+- O desenvolvedor deve garantir que as chamadas às funções RPC não exijam o cabeçalho 'Authorization' caso o link seja aberto por alguém deslogado.
+- Recomenda-se o uso de Mapbox ou Google Maps SDK para renderizar a Polyline da trilha.
+- O token deve ser passado via Deep Link ou Parâmetro de URL.
