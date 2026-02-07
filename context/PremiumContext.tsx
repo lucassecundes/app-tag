@@ -50,10 +50,8 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       setIsAdmin(false);
       // 2. Se não for admin, verifica status normal
-      // const status = await checkPremiumStatus(session.user.id);
-      // DESBLOQUEIO GLOBAL: Todos os usuários recebem status Premium para atender requisitos da Apple Store
-      // O modelo de negócio agora foca na renovação do dispositivo (hardware), não em features do app.
-      setIsPremium(true);
+      const status = await checkPremiumStatus(session.user.id);
+      setIsPremium(status);
     } catch (error) {
       console.error('Error refreshing premium status:', error);
       setIsPremium(false);

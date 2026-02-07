@@ -9,6 +9,7 @@ let Mapbox: any = {
   MapView: (props: any) => <View style={styles.container}><Text>Mapbox not available in Expo Go</Text></View>,
   Camera: () => null,
   PointAnnotation: () => null,
+  MarkerView: () => null,
   Callout: () => null,
   StyleURL: {
     Dark: 'mapbox://styles/mapbox/dark-v10',
@@ -81,6 +82,7 @@ const MockPoint = ({ children, coordinate }: any) => (
 export const MapView = isExpoGo ? MockMap : Mapbox.MapView;
 export const Camera = isExpoGo ? ({ children }: any) => <>{children}</> : Mapbox.Camera;
 export const PointAnnotation = isExpoGo ? MockPoint : Mapbox.PointAnnotation;
+export const MarkerView = isExpoGo ? MockPoint : Mapbox.MarkerView;
 export const Callout = isExpoGo ? () => null : Mapbox.Callout;
 export const StyleURL = Mapbox.StyleURL;
 export const UserLocation = isExpoGo ? () => null : Mapbox.UserLocation;

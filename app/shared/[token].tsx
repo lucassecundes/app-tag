@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
-import { MapView, Camera, PointAnnotation, StyleURL, ShapeSource, LineLayer, CircleLayer } from '../../components/ExternalMap';
+import { MapView, Camera, PointAnnotation, MarkerView, StyleURL, ShapeSource, LineLayer, CircleLayer } from '../../components/ExternalMap';
 import { Car, Truck, Bike, Bus, Package, Smartphone, Clock, MapPin, AlertCircle, Layers } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
@@ -190,7 +190,7 @@ export default function SharedLocationScreen() {
         ))}
 
         {device && (
-          <PointAnnotation
+          <MarkerView
             id="device-marker"
             coordinate={[parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)]}
           >
@@ -215,7 +215,7 @@ export default function SharedLocationScreen() {
               </View>
               <View style={styles.markerArrow} />
             </View>
-          </PointAnnotation>
+          </MarkerView>
         )}
       </MapView>
 

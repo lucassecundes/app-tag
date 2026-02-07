@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { MapView, Camera, PointAnnotation, StyleURL } from '../../components/ExternalMap';
+import { MapView, Camera, PointAnnotation, MarkerView, StyleURL } from '../../components/ExternalMap';
 import { Car, Truck, Bike, Bus, Package, Smartphone, ArrowRight, Layers, Share2, ArrowLeft } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
@@ -198,13 +198,16 @@ export default function GlobalMapScreen() {
         <Camera ref={cameraRef} />
 
         {devices.map(device => (
-          <PointAnnotation
+          <MarkerView
             key={device.id}
             id={`marker-${device.id}`}
             coordinate={[parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)]}
-            onSelected={() => handleMarkerPress(device)}
           >
-            <View style={styles.markerRoot}>
+            <TouchableOpacity
+              style={styles.markerRoot}
+              onPress={() => handleMarkerPress(device)}
+              activeOpacity={0.8}
+            >
               <View style={[
                 styles.markerBubble,
                 selectedDevice?.id === device.id && styles.markerSelected
@@ -233,8 +236,8 @@ export default function GlobalMapScreen() {
               <View style={styles.labelContainer}>
                 <Text style={styles.labelText} numberOfLines={1}>{device.nome}</Text>
               </View>
-            </View>
-          </PointAnnotation>
+            </TouchableOpacity>
+          </MarkerView>
         ))}
       </MapView>
 

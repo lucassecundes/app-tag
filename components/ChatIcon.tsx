@@ -3,7 +3,6 @@ import { TouchableOpacity, StyleSheet, View } from 'react-native';
 import { Bot, MessageSquare } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/Colors';
-import { usePremium } from '../context/PremiumContext';
 
 interface ChatIconProps {
   style?: any;
@@ -11,27 +10,8 @@ interface ChatIconProps {
 
 export function ChatIcon({ style }: ChatIconProps) {
   const router = useRouter();
-  const { isPremium } = usePremium();
 
   const handlePress = () => {
-    // Navigate regardless of premium status, check will be inside chat or before
-    // Requirement says: "Restringir funcionalidades premium: Verificar assinatura do usuário antes de permitir acesso"
-    // So we can block here or show a paywall inside.
-    // Let's block here for better UX if they can't use it at all.
-    // Actually, user wants "Opção de upgrade para plano premium". 
-    // If I block here, I need to show the premium modal.
-    // Assuming /chat will handle the non-premium state or we handle it here.
-    // Let's navigate to /chat and let that screen handle the locked state/banner, 
-    // OR we can just show an alert here.
-    // Let's stick to the requirement "Verificar assinatura do usuário antes de permitir acesso".
-    
-    if (!isPremium) {
-      // If there is a way to trigger the premium modal, do it.
-      // Otherwise navigate to subscription screen.
-      router.push('/subscription'); 
-      return;
-    }
-    
     router.push('/chat');
   };
 

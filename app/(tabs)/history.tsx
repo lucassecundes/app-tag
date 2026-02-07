@@ -4,7 +4,6 @@ import { Colors } from '../../constants/Colors';
 import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { usePremium } from '../../context/PremiumContext';
 import { format, parseISO, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
@@ -19,7 +18,6 @@ type FilterType = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 
 export default function HistoryScreen() {
   const { user } = useAuth();
-  const { isPremium, isAdmin } = usePremium();
   const params = useLocalSearchParams();
   const filterTagId = params.tagId as string;
 
@@ -61,7 +59,7 @@ export default function HistoryScreen() {
 
       // Se não for admin OU se não estiver filtrando uma tag específica, 
       // garante que só veja as próprias tags
-      if (!isAdmin || !filterTagId) {
+      if (!filterTagId) {
         query = query.eq('tags.usuario_id', user.id);
       }
 
@@ -72,14 +70,6 @@ export default function HistoryScreen() {
       // Ordenação: Tenta data_hora, mas se falhar (ex: campo nulo em registros antigos)
       // a query pode não ser eficiente. O ideal é ordenar no banco.
       query = query.order('data_hora', { ascending: false, nullsFirst: false });
-
-      // Restrição para usuários não-premium: Apenas 30 dias
-      if (!isPremium) {
-        const thirtyDaysAgo = subDays(new Date(), 30);
-        // Fallback: se data_hora for nulo, o filtro gte pode falhar dependendo do registro.
-        // Mas registros novos sempre terão data_hora.
-        query = query.gte('data_hora', thirtyDaysAgo.toISOString());
-      }
 
       const { data, error } = await query.limit(200);
 
@@ -113,8 +103,6 @@ export default function HistoryScreen() {
   );
 
   const applyFilter = (filter: FilterType, dataToFilter = history) => {
-    // Verificação Premium para filtro customizado
-
 
     if (filter === 'custom' && (!customRange)) {
       // Se for custom mas não tiver range definido, abrimos o picker (lógica na UI)
@@ -484,18 +472,13 @@ export default function HistoryScreen() {
               <TouchableOpacity
                 style={[
                   styles.filterChip,
-                  activeFilter === 'custom' && styles.activeFilterChip,
-                  !isPremium && { opacity: 0.7 }
+                  activeFilter === 'custom' && styles.activeFilterChip
                 ]}
                 onPress={() => {
-                  if (!isPremium) {
-                    applyFilter('custom'); // Dispara o alerta premium
-                  } else {
-                    setActiveFilter('custom');
-                  }
+                  setActiveFilter('custom');
                 }}
               >
-                <Calendar size={16} color={activeFilter === 'custom' ? Colors.white : (isPremium ? Colors.textSecondary : Colors.primary)} />
+                <Calendar size={16} color={activeFilter === 'custom' ? Colors.white : Colors.textSecondary} />
                 <Text style={[
                   { fontSize: 13, fontFamily: activeFilter === 'custom' ? 'Montserrat_600SemiBold' : 'Poppins_400Regular' },
                   activeFilter === 'custom' && { color: Colors.white }
@@ -505,8 +488,8 @@ export default function HistoryScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Seletor de Data Customizado (Só aparece se for Premium e selecionado) */}
-            {activeFilter === 'custom' && isPremium && (
+            {/* Seletor de Data Customizado */}
+            {activeFilter === 'custom' && (
               <View style={styles.customDateContainer}>
                 <Text style={styles.customDateLabel}>Intervalo (Data e Hora)</Text>
                 <View style={styles.dateInputsRow}>

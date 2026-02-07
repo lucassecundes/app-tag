@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
-import { MapView, Camera, PointAnnotation, StyleURL, ShapeSource, CircleLayer, FillLayer, LineLayer } from '../../components/ExternalMap';
+import { MapView, Camera, PointAnnotation, MarkerView, StyleURL, ShapeSource, CircleLayer, FillLayer, LineLayer } from '../../components/ExternalMap';
 import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock, X, Share2, Settings } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
@@ -413,7 +413,7 @@ export default function DeviceDetailScreen() {
           </ShapeSource>
         )}
 
-        <PointAnnotation
+        <MarkerView
           id="device-marker"
           coordinate={[currentLocation.lng, currentLocation.lat]}
         >
@@ -422,7 +422,7 @@ export default function DeviceDetailScreen() {
               styles.markerBubble,
               (alertaCerca || alertaMovimento) && { borderColor: Colors.error }
             ]}>
-              {imageUrl && !imageError ? (
+              {imageUrl && !imageUrl.includes('placeholder') && !imageError ? (
                 <Image
                   source={{ uri: imageUrl }}
                   style={styles.markerImage}
@@ -444,7 +444,7 @@ export default function DeviceDetailScreen() {
               (alertaCerca || alertaMovimento) && { borderTopColor: Colors.error }
             ]} />
           </View>
-        </PointAnnotation>
+        </MarkerView>
       </MapView>
 
       <View style={styles.header}>

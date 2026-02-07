@@ -113,7 +113,7 @@ export default function PersonalDataScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'position' : 'height'}
       style={styles.container}
     >
       <View style={styles.header}>
@@ -123,7 +123,10 @@ export default function PersonalDataScreen() {
         <Text style={styles.title}>Dados Pessoais</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.form}>
           <Input
             label="Nome Completo"
@@ -198,7 +201,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   content: {
-    flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
