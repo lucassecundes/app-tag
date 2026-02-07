@@ -6,14 +6,14 @@ import { supabase } from '../../lib/supabase';
 import { translateSupabaseError } from '../../lib/errorTranslator';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { ArrowLeft, User, Mail, Phone, Save } from 'lucide-react-native';
+import { ArrowLeft, User, Mail, Phone, Save, Trash2 } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 export default function PersonalDataScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  
+
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -24,11 +24,11 @@ export default function PersonalDataScreen() {
 
   const fetchUserData = async () => {
     if (!user) return;
-    
+
     try {
       // Preencher email do auth
       setEmail(user.email || '');
-      
+
       // Buscar dados complementares
       const { data, error } = await supabase
         .from('usuario')
@@ -77,8 +77,42 @@ export default function PersonalDataScreen() {
     }
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Excluir Conta',
+      'Tem certeza que deseja excluir sua conta permanentemente? Esta ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'EXCLUIR',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              // Deletar da tabela de usuários (o delete do Auth usuário geralmente exige service role no backend)
+              // Em apps Apple, apontar para um fluxo de exclusão é o requisito.
+              const { error } = await supabase
+                .from('usuario')
+                .update({ status: 'deleted', delet: true }) // Marcar como deletado para auditoria
+                .eq('auth_user_id', user?.id);
+
+              if (error) throw error;
+
+              await supabase.auth.signOut();
+              Alert.alert('Conta Excluída', 'Sua conta foi desativada e será excluída permanentemente em breve.');
+            } catch (error: any) {
+              Alert.alert('Erro', 'Ocorreu um erro ao solicitar a exclusão da conta. Por favor, entre em contato com o suporte.');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
@@ -118,13 +152,25 @@ export default function PersonalDataScreen() {
           />
         </View>
 
-        <Button 
-          title="SALVAR ALTERAÇÕES" 
-          onPress={handleSave} 
+        <Button
+          title="SALVAR ALTERAÇÕES"
+          onPress={handleSave}
           loading={loading}
           icon={<Save size={20} color={Colors.white} />}
           style={styles.saveButton}
         />
+
+        <View style={styles.dangerZone}>
+          <Text style={styles.dangerTitle}>Zona de Perigo</Text>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteAccount}
+            disabled={loading}
+          >
+            <Trash2 size={20} color={Colors.error} />
+            <Text style={styles.deleteButtonText}>Excluir minha conta permanentemente</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -168,6 +214,36 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   saveButton: {
-    marginTop: 'auto',
+    marginTop: 16,
+    marginBottom: 48,
+  },
+  dangerZone: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  dangerTitle: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.error,
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 68, 68, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 68, 68, 0.1)',
+  },
+  deleteButtonText: {
+    color: Colors.error,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 14,
+    marginLeft: 12,
   },
 });

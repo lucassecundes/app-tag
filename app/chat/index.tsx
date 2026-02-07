@@ -76,17 +76,7 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    if (!isPremium) {
-      Alert.alert(
-        'Funcionalidade Premium',
-        'O chat com IA é exclusivo para assinantes Premium.',
-        [
-          { text: 'Voltar', onPress: () => router.back() },
-          { text: 'Assinar', onPress: () => router.push('/subscription') }
-        ]
-      );
-      return;
-    }
+
 
     // Always start with a fresh session (empty messages)
     setInitialLoading(false);
@@ -105,7 +95,7 @@ export default function ChatScreen() {
       content: userMessageContent,
       created_at: new Date().toISOString()
     };
-    
+
     setMessages(prev => [...prev, newUserMessage]);
 
     try {
@@ -118,7 +108,7 @@ export default function ChatScreen() {
         role: m.role,
         content: m.content
       }));
-      
+
       historyForAI.push({ role: 'user', content: userMessageContent });
 
       const aiResponse = await AIService.sendMessage(historyForAI, user.id);
@@ -145,7 +135,7 @@ export default function ChatScreen() {
     const isUser = item.role === 'user';
     return (
       <View style={[
-        styles.messageContainer, 
+        styles.messageContainer,
         isUser ? styles.userMessageContainer : styles.aiMessageContainer
       ]}>
         {!isUser && (
@@ -154,11 +144,11 @@ export default function ChatScreen() {
           </View>
         )}
         <View style={[
-          styles.bubble, 
+          styles.bubble,
           isUser ? styles.userBubble : styles.aiBubble
         ]}>
           <Text style={[
-            styles.messageText, 
+            styles.messageText,
             isUser ? styles.userMessageText : styles.aiMessageText
           ]}>
             {item.content}
@@ -176,7 +166,7 @@ export default function ChatScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={Colors.text} />
@@ -193,7 +183,7 @@ export default function ChatScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
           style={{ flex: 1 }}
@@ -215,8 +205,8 @@ export default function ChatScreen() {
               <Text style={styles.promptsTitle}>Sugestões para começar:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promptsScroll}>
                 {prompts.map((prompt) => (
-                  <TouchableOpacity 
-                    key={prompt.id} 
+                  <TouchableOpacity
+                    key={prompt.id}
                     style={styles.promptChip}
                     onPress={() => handleSend(prompt.prompt)}
                   >
@@ -241,7 +231,7 @@ export default function ChatScreen() {
               multiline
               maxLength={500}
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}
               onPress={() => handleSend()}
               disabled={!inputText.trim() || loading}

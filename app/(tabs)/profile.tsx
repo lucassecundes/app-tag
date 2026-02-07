@@ -55,7 +55,7 @@ export default function ProfileScreen() {
     { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
     { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => router.push('/(tabs)/security') },
     { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => router.push('/(tabs)/settings') },
-    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => {} },
+    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => { } },
   ];
 
   return (
@@ -65,11 +65,7 @@ export default function ProfileScreen() {
           <Text style={styles.avatarText}>
             {user?.email?.substring(0, 2).toUpperCase() || 'US'}
           </Text>
-          {isPremium && (
-            <View style={styles.premiumBadge}>
-              <Crown size={12} color="#000" fill="#000" />
-            </View>
-          )}
+
         </View>
         <Text style={styles.userName}>{userName}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
@@ -79,8 +75,8 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Conta</Text>
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               style={[
                 styles.menuItem,
                 index === menuItems.length - 1 && styles.lastMenuItem
@@ -99,14 +95,14 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <Button 
-        title="Sair da Conta" 
-        onPress={signOut} 
+      <Button
+        title="Sair da Conta"
+        onPress={signOut}
         variant="outline"
         icon={<LogOut size={20} color={Colors.primary} />}
         style={styles.logoutButton}
       />
-      
+
       <Text style={styles.versionText}>Versão {Constants.expoConfig?.version}</Text>
     </ScrollView>
   );

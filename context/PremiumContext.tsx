@@ -14,7 +14,7 @@ const PremiumContext = createContext<PremiumContextType>({
   isPremium: false,
   isAdmin: false,
   isLoading: true,
-  refreshPremiumStatus: async () => {},
+  refreshPremiumStatus: async () => { },
 });
 
 export const usePremium = () => useContext(PremiumContext);
@@ -50,8 +50,10 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       setIsAdmin(false);
       // 2. Se não for admin, verifica status normal
-      const status = await checkPremiumStatus(session.user.id);
-      setIsPremium(status);
+      // const status = await checkPremiumStatus(session.user.id);
+      // DESBLOQUEIO GLOBAL: Todos os usuários recebem status Premium para atender requisitos da Apple Store
+      // O modelo de negócio agora foca na renovação do dispositivo (hardware), não em features do app.
+      setIsPremium(true);
     } catch (error) {
       console.error('Error refreshing premium status:', error);
       setIsPremium(false);

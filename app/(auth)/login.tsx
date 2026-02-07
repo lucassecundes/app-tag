@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, Alert, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, LogIn } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
@@ -35,7 +35,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
@@ -68,16 +68,16 @@ export default function LoginScreen() {
             icon={<Lock size={20} color={Colors.textSecondary} />}
           />
 
-          <TouchableOpacity 
-            style={styles.forgotPassword} 
+          <TouchableOpacity
+            style={styles.forgotPassword}
             onPress={() => router.push('/(auth)/forgot-password')}
           >
             <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
           </TouchableOpacity>
 
-          <Button 
-            title="ENTRAR" 
-            onPress={handleLogin} 
+          <Button
+            title="ENTRAR"
+            onPress={handleLogin}
             loading={loading}
             icon={<LogIn size={20} color={Colors.white} />}
             style={styles.loginButton}
@@ -85,10 +85,27 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Não tem uma conta? </Text>
-            {/* Alterado para apontar para scan-tag em vez de register direto */}
             <Link href="/(auth)/scan-tag" asChild>
-              <Text style={styles.linkText}>Cadastre-se</Text>
+              <TouchableOpacity>
+                <Text style={styles.linkText}>Cadastre-se</Text>
+              </TouchableOpacity>
             </Link>
+          </View>
+
+          <View style={styles.buyTagContainer}>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OU</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.buyTagButton}
+              onPress={() => Linking.openURL('https://tag.besat.com.br/checkout/tagpro')}
+            >
+              <Text style={styles.buyTagLabel}>Não tem uma tag?</Text>
+              <Text style={styles.buyTagAction}>Adquira agora!</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -167,5 +184,48 @@ const styles = StyleSheet.create({
   linkText: {
     color: Colors.primary,
     fontFamily: 'Poppins_600SemiBold',
+  },
+  buyTagContainer: {
+    marginTop: 32,
+    alignItems: 'center',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    width: '100%',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  dividerText: {
+    color: Colors.textSecondary,
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 12,
+    marginHorizontal: 16,
+  },
+  buyTagButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(67, 97, 238, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(67, 97, 238, 0.2)',
+  },
+  buyTagLabel: {
+    color: Colors.textSecondary,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    marginRight: 6,
+  },
+  buyTagAction: {
+    color: Colors.primary,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
   },
 });

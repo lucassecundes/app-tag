@@ -214,6 +214,7 @@ export default function GlobalMapScreen() {
                     source={{ uri: device.imagem_url }}
                     style={styles.markerImage}
                     resizeMode="cover"
+                    fadeDuration={0}
                     onError={() => {
                       console.log(`Erro ao carregar imagem no mapa para ${device.id}`);
                       setImageErrors(prev => ({ ...prev, [device.id]: true }));
@@ -277,17 +278,7 @@ export default function GlobalMapScreen() {
             <TouchableOpacity
               style={styles.shareIconButton}
               onPress={() => {
-                if (!isPremium) {
-                  Alert.alert(
-                    'Recurso Premium',
-                    'O compartilhamento de localização em tempo real está disponível apenas para assinantes Premium.',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Ver Planos', onPress: () => router.push('/subscription') }
-                    ]
-                  );
-                  return;
-                }
+
                 router.push({
                   pathname: '/device-detail/share' as any,
                   params: { id: selectedDevice.id, nome: selectedDevice.nome }

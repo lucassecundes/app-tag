@@ -6,7 +6,7 @@ import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../../context/PremiumContext';
-import { PremiumBanner } from '../../components/PremiumBanner';
+
 import { ChatIcon } from '../../components/ChatIcon';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -16,7 +16,7 @@ import { Image } from 'react-native';
 export default function DeviceListScreen() {
   const { user } = useAuth();
   const { isPremium } = usePremium();
-  
+
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -108,7 +108,7 @@ export default function DeviceListScreen() {
         .select('nome')
         .eq('auth_user_id', user.id)
         .single();
-      
+
       if (data?.nome) {
         setFirstName(data.nome.split(' ')[0]);
       }
@@ -131,7 +131,7 @@ export default function DeviceListScreen() {
     setErrorMsg(null);
     try {
       console.log('Buscando dispositivos...');
-      
+
       let query = supabase
         .from('tags')
         .select('*')
@@ -145,7 +145,7 @@ export default function DeviceListScreen() {
         // Comportamento padrão: busca os dispositivos do próprio usuário
         query = query.eq('usuario_id', user.id);
       }
-      
+
       const { data, error } = await query;
 
       if (error) {
@@ -181,7 +181,7 @@ export default function DeviceListScreen() {
     // Melhor abordagem: chamar fetchDevices na próxima renderização ou usar um useEffect dependente.
     // Para simplificar, vou forçar a chamada com o estado "limpo" lógico:
     setTimeout(() => {
-        fetchDevices(); // Re-busca sem filtros (volta ao padrão user.id)
+      fetchDevices(); // Re-busca sem filtros (volta ao padrão user.id)
     }, 100);
   };
 
@@ -216,10 +216,10 @@ export default function DeviceListScreen() {
   const handleDevicePress = (device: any) => {
     router.push({
       pathname: '/device-detail/[id]',
-      params: { 
+      params: {
         id: device.id,
         nome: device.nome,
-        lat: device.ultima_lat || -23.550520, 
+        lat: device.ultima_lat || -23.550520,
         lng: device.ultima_lng || -46.633308,
         address: device.endereco
       }
@@ -240,7 +240,7 @@ export default function DeviceListScreen() {
   // Função auxiliar para calcular tempo relativo
   const getTimeAgo = (dateString: string) => {
     if (!dateString) return '';
-    
+
     const now = new Date();
     const past = new Date(dateString);
     const diffMs = now.getTime() - past.getTime();
@@ -248,10 +248,10 @@ export default function DeviceListScreen() {
 
     if (diffMins < 1) return 'Agora';
     if (diffMins < 60) return `${diffMins}m`;
-    
+
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d`;
   };
@@ -261,16 +261,16 @@ export default function DeviceListScreen() {
     const hasLocation = !!item.endereco;
 
     return (
-      <TouchableOpacity 
-        style={styles.card} 
+      <TouchableOpacity
+        style={styles.card}
         onPress={() => handleDevicePress(item)}
         activeOpacity={0.7}
       >
         <View style={styles.cardIcon}>
           {item.imagem_url && !imageErrors[item.id] ? (
-            <Image 
-              source={{ uri: item.imagem_url }} 
-              style={styles.deviceImage} 
+            <Image
+              source={{ uri: item.imagem_url }}
+              style={styles.deviceImage}
               resizeMode="cover"
               onError={() => {
                 console.log(`Erro ao carregar imagem para o dispositivo ${item.id}`);
@@ -283,22 +283,22 @@ export default function DeviceListScreen() {
         </View>
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{item.nome || 'Dispositivo sem nome'}</Text>
-          
+
           {/* Alteração: Tempo movido para junto do ID */}
           <Text style={styles.cardSubtitle}>
             ID: {item.codigo || item.id?.substring(0, 8)}
             {timeAgo && <Text style={{ color: Colors.primary }}> • {timeAgo}</Text>}
           </Text>
-          
+
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: item.ultima_lat ? Colors.success : Colors.warning }]} />
-            
+
             <Text style={styles.statusText} numberOfLines={1}>
               {hasLocation ? item.endereco : 'Aguardando posição'}
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.rightActions}>
           {(item.alerta_cerca || item.alerta_movimento) && (
             <View style={styles.alertsContainer}>
@@ -329,9 +329,9 @@ export default function DeviceListScreen() {
           <Text style={styles.greeting}>Olá, {firstName}</Text>
           <Text style={styles.title}>Lista de Dispositivos</Text>
         </View>
-        
+
         {isAdmin && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.filterButton, filterActive && styles.filterButtonActive]}
             onPress={() => setShowFilterModal(true)}
           >
@@ -357,7 +357,7 @@ export default function DeviceListScreen() {
         animationType="slide"
         onRequestClose={() => setShowFilterModal(false)}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
@@ -368,10 +368,10 @@ export default function DeviceListScreen() {
                 <X size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.modalLabel}>Pesquisar Usuário (Nome ou Email)</Text>
-            <Input 
-              placeholder="Digite nome ou email..." 
+            <Input
+              placeholder="Digite nome ou email..."
               value={searchQuery}
               onChangeText={handleSearchTextChange}
               autoCapitalize="none"
@@ -387,7 +387,7 @@ export default function DeviceListScreen() {
               keyExtractor={(item) => item.auth_user_id}
               style={{ marginTop: 8, maxHeight: 200 }}
               renderItem={({ item }) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.resultItem}
                   onPress={() => selectUser(item)}
                 >
@@ -397,7 +397,7 @@ export default function DeviceListScreen() {
                   <View>
                     <Text style={styles.resultName}>{item.nome || 'Sem nome'}</Text>
                     {item.email && <Text style={styles.resultEmail}>{item.email}</Text>}
-                    <Text style={styles.resultId}>ID: {item.auth_user_id?.substring(0,8)}...</Text>
+                    <Text style={styles.resultId}>ID: {item.auth_user_id?.substring(0, 8)}...</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -407,20 +407,20 @@ export default function DeviceListScreen() {
                 ) : null
               }
             />
-            
+
             <View style={styles.modalDivider} />
 
             <Text style={styles.modalLabel}>Ou ID Manual (UUID)</Text>
-            <Input 
-              placeholder="Ex: 123e4567-e89b..." 
+            <Input
+              placeholder="Ex: 123e4567-e89b..."
               value={targetUserId}
               onChangeText={setTargetUserId}
               autoCapitalize="none"
               icon={<Tag size={20} color={Colors.textSecondary} />}
             />
-            
-            <Button 
-              title="APLICAR FILTRO MANUAL" 
+
+            <Button
+              title="APLICAR FILTRO MANUAL"
               onPress={applyFilter}
               style={{ marginTop: 16 }}
               variant="outline"
@@ -430,9 +430,7 @@ export default function DeviceListScreen() {
       </Modal>
 
       {/* 3. Exibição Condicional do Banner Premium (Apenas para não-admin/não-premium) */}
-      {!isPremium && !isAdmin && (
-        <PremiumBanner message="Faça upgrade para monitorar dispositivos ilimitados" />
-      )}
+
 
       {errorMsg && (
         <View style={styles.errorContainer}>
@@ -463,8 +461,8 @@ export default function DeviceListScreen() {
               <Text style={styles.emptyText}>
                 Você ainda não possui nenhuma TAGPRO+ vinculada.
               </Text>
-              <Button 
-                title="Vincular Agora" 
+              <Button
+                title="Vincular Agora"
                 onPress={() => router.push('/devices/add')}
                 style={{ marginTop: 24, width: '100%' }}
               />
@@ -473,8 +471,8 @@ export default function DeviceListScreen() {
         />
       )}
 
-      <TouchableOpacity 
-        style={styles.fab} 
+      <TouchableOpacity
+        style={styles.fab}
         onPress={() => router.push('/devices/add')}
         activeOpacity={0.8}
       >

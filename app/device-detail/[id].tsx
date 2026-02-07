@@ -10,7 +10,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { usePremium } from '../../context/PremiumContext';
 import { useAuth } from '../../context/AuthContext';
-import { PremiumBadge } from '../../components/PremiumBadge';
+
 import { translateSupabaseError } from '../../lib/errorTranslator';
 import { Image } from 'react-native';
 
@@ -228,18 +228,6 @@ export default function DeviceDetailScreen() {
   };
 
   const toggleAlert = async (type: 'cerca' | 'movimento') => {
-    // Restrição Premium
-    if (!isPremium) {
-      Alert.alert(
-        'Recurso Premium',
-        'Assine o Premium para ativar alertas de segurança e monitoramento.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Assinar Agora', onPress: () => router.push('/subscription') }
-        ]
-      );
-      return;
-    }
 
     if (type === 'movimento' && !alertaMovimento) {
       // Se for ativar movimento, abre modal primeiro
@@ -439,6 +427,7 @@ export default function DeviceDetailScreen() {
                   source={{ uri: imageUrl }}
                   style={styles.markerImage}
                   resizeMode="cover"
+                  fadeDuration={0}
                   onError={() => {
                     console.log('Erro ao carregar imagem nos detalhes');
                     setImageError(true);
@@ -478,17 +467,6 @@ export default function DeviceDetailScreen() {
         <TouchableOpacity
           style={styles.controlButton}
           onPress={() => {
-            if (!isPremium) {
-              Alert.alert(
-                'Recurso Premium',
-                'O compartilhamento de localização em tempo real está disponível apenas para assinantes Premium.',
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Ver Planos', onPress: () => router.push('/subscription') }
-                ]
-              );
-              return;
-            }
             router.push({
               pathname: '/device-detail/share' as any,
               params: { id, nome }
@@ -610,7 +588,7 @@ export default function DeviceDetailScreen() {
                 style={[
                   styles.alertCard,
                   alertaCerca && styles.alertCardActive,
-                  !isPremium && styles.alertCardDisabled
+
                 ]}
                 onPress={() => toggleAlert('cerca')}
                 disabled={loadingAlerts}
@@ -619,16 +597,12 @@ export default function DeviceDetailScreen() {
                   <View style={[
                     styles.alertIconBox,
                     alertaCerca && styles.alertIconBoxActive,
-                    !isPremium && styles.alertIconBoxDisabled
+
                   ]}>
                     <Shield size={20} color={alertaCerca ? Colors.white : Colors.textSecondary} />
                   </View>
                   <View style={styles.toggleIcon}>
-                    {!isPremium ? (
-                      <PremiumBadge size="small" />
-                    ) : (
-                      alertaCerca ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />
-                    )}
+                    {alertaCerca ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
                   </View>
                 </View>
                 <Text style={[styles.alertTitle, alertaCerca && styles.alertTitleActive]}>Zona Segura</Text>
@@ -639,7 +613,7 @@ export default function DeviceDetailScreen() {
                 style={[
                   styles.alertCard,
                   alertaMovimento && styles.alertCardActive,
-                  !isPremium && styles.alertCardDisabled
+
                 ]}
                 onPress={() => toggleAlert('movimento')}
                 disabled={loadingAlerts}
@@ -648,16 +622,12 @@ export default function DeviceDetailScreen() {
                   <View style={[
                     styles.alertIconBox,
                     alertaMovimento && styles.alertIconBoxActive,
-                    !isPremium && styles.alertIconBoxDisabled
+
                   ]}>
                     <Clock size={20} color={alertaMovimento ? Colors.white : Colors.textSecondary} />
                   </View>
                   <View style={styles.toggleIcon}>
-                    {!isPremium ? (
-                      <PremiumBadge size="small" />
-                    ) : (
-                      alertaMovimento ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />
-                    )}
+                    {alertaMovimento ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
                   </View>
                 </View>
                 <Text style={[styles.alertTitle, alertaMovimento && styles.alertTitleActive]}>Movimento</Text>

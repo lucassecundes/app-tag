@@ -19,11 +19,11 @@ export default function ShareLocationScreen() {
   const { id, nome } = params;
   const { user } = useAuth();
   const { isPremium, isLoading: premiumLoading } = usePremium();
-  
+
   const [loading, setLoading] = useState(false);
   const [activeLinks, setActiveLinks] = useState<any[]>([]);
   const [fetchingLinks, setFetchingLinks] = useState(true);
-  
+
   // Estados para novo link
   const [expiryDate, setExpiryDate] = useState(addHours(new Date(), 24)); // Default 24h
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -31,7 +31,7 @@ export default function ShareLocationScreen() {
 
   const fetchActiveLinks = useCallback(async () => {
     if (!id || !user) return;
-    
+
     setFetchingLinks(true);
     try {
       const { data, error } = await supabase
@@ -56,22 +56,10 @@ export default function ShareLocationScreen() {
   const handleCreateLink = async () => {
     if (!id || !user) return;
 
-    if (!isPremium) {
-      Alert.alert(
-        'Recurso Premium',
-        'Assine o plano Premium para gerar links de compartilhamento.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Ver Planos', onPress: () => router.push('/subscription') }
-        ]
-      );
-      return;
-    }
-
     setLoading(true);
     try {
       const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
+
       const { data, error } = await supabase
         .from('compartilhamentos')
         .insert({
@@ -102,8 +90,8 @@ export default function ShareLocationScreen() {
       'Tem certeza que deseja desativar este link? O acesso será interrompido imediatamente.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Desativar', 
+        {
+          text: 'Desativar',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -165,7 +153,7 @@ export default function ShareLocationScreen() {
 
   const renderLinkItem = ({ item }: { item: any }) => {
     const isExpired = isAfter(new Date(), parseISO(item.valido_ate));
-    
+
     return (
       <View style={[styles.linkCard, isExpired && styles.linkCardExpired]}>
         <View style={styles.linkHeader}>
@@ -188,24 +176,24 @@ export default function ShareLocationScreen() {
         </View>
 
         <View style={styles.linkActions}>
-          <TouchableOpacity 
-            style={styles.actionButton} 
+          <TouchableOpacity
+            style={styles.actionButton}
             onPress={() => handleCopyLink(item.token)}
           >
             <Copy size={18} color={Colors.text} />
             <Text style={styles.actionButtonText}>Copiar</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.actionButton} 
+
+          <TouchableOpacity
+            style={styles.actionButton}
             onPress={() => handleShareLink(item.token)}
           >
             <Share2 size={18} color={Colors.text} />
             <Text style={styles.actionButtonText}>Enviar</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.deleteButton]} 
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
             onPress={() => handleDeleteLink(item.id)}
           >
             <Trash2 size={18} color={Colors.error} />
@@ -225,8 +213,8 @@ export default function ShareLocationScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{ 
+      <Stack.Screen
+        options={{
           title: 'Compartilhar Localização',
           headerShown: true,
           headerStyle: { backgroundColor: Colors.background },
@@ -236,7 +224,7 @@ export default function ShareLocationScreen() {
               <ArrowLeft size={24} color={Colors.text} />
             </TouchableOpacity>
           ),
-        }} 
+        }}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -252,11 +240,11 @@ export default function ShareLocationScreen() {
 
         <View style={styles.configCard}>
           <Text style={styles.sectionTitle}>Novo Link de Compartilhamento</Text>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Data de Expiração</Text>
-            <TouchableOpacity 
-              style={styles.dateSelector} 
+            <TouchableOpacity
+              style={styles.dateSelector}
               onPress={() => setShowDatePicker(true)}
             >
               <Calendar size={20} color={Colors.primary} />
@@ -268,8 +256,8 @@ export default function ShareLocationScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Hora de Expiração</Text>
-            <TouchableOpacity 
-              style={styles.dateSelector} 
+            <TouchableOpacity
+              style={styles.dateSelector}
               onPress={() => setShowTimePicker(true)}
             >
               <Clock size={20} color={Colors.primary} />
@@ -298,13 +286,13 @@ export default function ShareLocationScreen() {
             />
           )}
 
-          <Button 
-            title="GERAR LINK PÚBLICO" 
+          <Button
+            title="GERAR LINK PÚBLICO"
             onPress={handleCreateLink}
             loading={loading}
             style={styles.generateButton}
           />
-          
+
           <View style={styles.securityNote}>
             <ShieldAlert size={14} color={Colors.textSecondary} />
             <Text style={styles.securityNoteText}>
@@ -315,7 +303,7 @@ export default function ShareLocationScreen() {
 
         <View style={styles.linksSection}>
           <Text style={styles.sectionTitle}>Links Ativos / Recentes</Text>
-          
+
           {fetchingLinks ? (
             <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 20 }} />
           ) : activeLinks.length === 0 ? (

@@ -5,8 +5,8 @@ import { AlertTriangle, Battery, Shield, WifiOff, Bell, MapPin } from 'lucide-re
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../../context/PremiumContext';
-import { PremiumBadge } from '../../components/PremiumBadge';
-import { PremiumBanner } from '../../components/PremiumBanner';
+
+
 import { router, useFocusEffect } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -19,7 +19,7 @@ export default function AlertsScreen() {
 
   const fetchAlerts = async () => {
     if (!user) return;
-    
+
     try {
       // Busca notificações da tabela 'alertas' e faz join com 'tags' para obter o nome do dispositivo
       const { data, error } = await supabase
@@ -41,7 +41,7 @@ export default function AlertsScreen() {
         console.log('Erro ao buscar notificações:', error);
         throw error;
       }
-      
+
       // Mapear os dados para o formato esperado pela UI
       const formattedAlerts = data?.map(item => ({
         id: item.id,
@@ -73,7 +73,7 @@ export default function AlertsScreen() {
     if (alert.latitude && alert.longitude) {
       router.push({
         pathname: '/device-detail/[id]',
-        params: { 
+        params: {
           id: alert.tag_id,
           lat: alert.latitude,
           lng: alert.longitude,
@@ -107,7 +107,7 @@ export default function AlertsScreen() {
         <Text style={styles.title}>Notificações</Text>
       </View>
 
-      {!isPremium && <PremiumBanner message="Receba alertas ilimitados e prioridade." />}
+
 
       {loading ? (
         <View style={styles.centerState}>
@@ -130,7 +130,7 @@ export default function AlertsScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.alertItem}
               onPress={() => handleAlertPress(item)}
               activeOpacity={0.7}
@@ -141,7 +141,7 @@ export default function AlertsScreen() {
               <View style={styles.alertContent}>
                 <View style={styles.alertHeader}>
                   <Text style={styles.alertTitle}>{item.title}</Text>
-                  {!isPremium && <PremiumBadge size="small" style={{ marginLeft: 8 }} />}
+
                 </View>
                 <Text style={styles.alertMessage}>{item.message}</Text>
                 <Text style={styles.alertTime}>{formatTime(item.created_at)}</Text>

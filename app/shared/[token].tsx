@@ -201,6 +201,7 @@ export default function SharedLocationScreen() {
                     source={{ uri: device.imagem_url }}
                     style={styles.markerImage}
                     resizeMode="cover"
+                    fadeDuration={0}
                     onError={() => {
                       console.log('Erro ao carregar imagem no compartilhado');
                       setImageError(true);
