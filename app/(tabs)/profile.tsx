@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../../context/PremiumContext';
-import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, Crown, CreditCard } from 'lucide-react-native';
+import { User, Settings, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, Crown, CreditCard, Gift } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
+import { ReferralProfileCard } from '../../components/referral/ReferralProfileCard';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import Constants from 'expo-constants';
@@ -55,6 +56,7 @@ export default function ProfileScreen() {
     { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
     { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => router.push('/(tabs)/security') },
     { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => router.push('/(tabs)/settings') },
+    { icon: <Gift size={20} color={Colors.text} />, label: 'Minhas Indicações', action: () => router.push('/referral/dashboard') },
     { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => { } },
   ];
 
@@ -70,6 +72,8 @@ export default function ProfileScreen() {
         <Text style={styles.userName}>{userName}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
       </View>
+
+      <ReferralProfileCard onPress={() => router.push('/referral')} />
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Conta</Text>
@@ -114,9 +118,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   content: {
+    flexGrow: 1,
     paddingTop: 60,
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   header: {
     alignItems: 'center',
@@ -210,7 +215,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   logoutButton: {
-    marginTop: 'auto',
+    marginTop: 60,
     marginBottom: 24,
   },
   versionText: {

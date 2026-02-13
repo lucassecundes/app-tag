@@ -176,6 +176,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 24,
+    paddingBottom: 120,
   },
   alertItem: {
     flexDirection: 'row',

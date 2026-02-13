@@ -1,0 +1,108 @@
+################################################################################
+# DOCUMENTAÇÃO COMPLETA: SISTEMA DE INDICAÇÃO (REFERRAL SYSTEM)
+# Este documento descreve toda a implementação realizada para replicação fiel no App Nativo.
+################################################################################
+
+================================================================================
+1. BANCO DE DADOS (SUPABASE / POSTGRES)
+================================================================================
+
+Tabelas Criadas/Modificadas:
+
+A. public.profiles (Extensão do Usuário)
+   - Objetivo: Armazena o código único de indicação de cada usuário.
+   - Campos: 
+     * id (uuid, PK, ref auth.users)
+     * email (text)
+     * referral_code (text, UNIQUE, NOT NULL): Código curto de 6 caracteres.
+   - Automação: Trigger 'handle_new_user' gera o código automaticamente no cadastro.
+
+B. public.referral_clicks (Cliques em Links)
+   - Objetivo: Registra quando alguém clica em um link de indicação.
+   - Campos: id, referrer_id (quem indicou), visitor_fingerprint, user_agent, created_at.
+
+C. public.coupons (Tabela Global de Cupons)
+   - Objetivo: Armazena cupons de desconto (gerais e de recompensa).
+   - Campos: 
+     * token (text, UNIQUE): O código que o usuário digita.
+     * purpose (text): 'referral_entry', 'referrer_reward', 'general'.
+     * percent (integer): Porcentagem de desconto (0-100).
+     * owner_user_id (uuid): Usuário que ganhou o cupom (se for recompensa).
+     * expires_at (timestamptz), is_active (bool), max_uses (int), uses_count (int).
+
+D. public.referrals (Vínculo de Indicação)
+   - Objetivo: Registra quem foi indicado por quem e o status da recompensa.
+   - Campos: 
+     * referrer_id (Indica), buyer_user_id (Comprador), status (pending, confirmed, rejected).
+   - Regra: Status 'confirmed' ativa a recompensa para o indicador.
+
+E. public.rewards (Recompensas do Indicador)
+   - Objetivo: Carteira de prêmios do usuário indicador.
+   - Campos: type ('coupon_50', 'tag_free'), quantity, status ('available', 'redeemed').
+
+F. public.orders (Modificação)
+   - Adicionados campos: 'coupon_id' (uuid) e 'discount' (numeric).
+
+================================================================================
+2. COMPONENTES E TELAS (UI/UX)
+================================================================================
+
+A. ReferralCard.tsx (Widget de Perfil)
+   - Exibe o código do usuário e o botão principal "Indique e Ganhe".
+   - Funcionalidade: Gera o link de checkout com o cupom na URL.
+   - Fallback: Se a Edge Function falhar, busca o código diretamente na tabela 'profiles'.
+
+B. ReferralHowItWorks.tsx (Página "Como Funciona")
+   - Caminho: /perfil/indicacoes
+   - Conteúdo:
+     1. Passo 1: "Compartilhe seu link - Seus amigos ganham 20% de desconto".
+     2. Passo 2: "Seu amigo faz a compra".
+     3. Passo 3: "Você ganha recompensas".
+   - Recompensas Listadas:
+     * 1 Amigo: Cupom de 50% OFF.
+     * 3 Amigos: 1 TAG Grátis.
+     * 5 Amigos: 2 TAGs Grátis.
+
+C. ReferralDashboard.tsx (Dashboard de Indicações)
+   - Caminho: /perfil/minhas-indicacoes
+   - Exibe a lista de amigos indicados, o status (Aguardando/Confirmado) e o prêmio acumulado.
+   - Mobile Friendly: Layout em cards para lista em telas pequenas.
+
+================================================================================
+3. LÓGICA DE NEGÓCIO E DESCONTO (CORE)
+================================================================================
+
+A. Validação de Cupom no Checkout (AsaasCheckout.tsx / Checkout.tsx)
+   Ao validar um cupom digitado ou vindo da URL (?coupon=...), o sistema segue:
+   
+   1. Valida se o código existe em 'products.discounts' (Desconto específico do produto).
+   2. Valida se o código existe na tabela 'public.coupons' (Cupons gerais do admin).
+   3. VALIDAÇÃO DE INDICAÇÃO (NOVO):
+      - Se não encontrar nos anteriores, busca na tabela 'public.profiles' pelo campo 'referral_code'.
+      - Se encontrar um usuário com esse código:
+        * Aplica 20% de desconto (Tipo: PERCENT).
+        * Exibe toast/alert: "Convite aceito! Você ganhou 20% de desconto ✨".
+   
+   IMPORTANTE: A aplicação deve ser automática se o parâmetro existir na URL.
+
+B. Edge Functions (Back-end)
+   - 'referrer-status': Retorna os dados agregados de indicação do usuário logado.
+   - 'create-asaas-payment': Registra o 'coupon_id' no pedido para rastro da indicação.
+
+================================================================================
+4. REQUERIMENTOS PARA O APP NATIVO
+================================================================================
+
+1. Deep Linking: Interceptar URLs com '?coupon=X' e aplicar o cupom no checkout nativo.
+2. Compartilhamento: Usar o Share nativo do sistema com a URL formatada:
+   `https://rastreiotag.com.br/checkout?coupon={REFERRAL_CODE}`
+3. Sincronização: O App deve atualizar o status das recompensas em tempo real chamando a base do Supabase (tabela 'rewards' e 'referrals').
+4. UI Premium: Manter as bordas arredondadas (rounded-xl/3xl) e o gradiente (primary/orange) para consistência visual com a Web.
+
+================================================================================
+RESUMO DOS NÚMEROS:
+- Desconto para o amigo: 20% OFF.
+- Recompensa 1 (1 amigo): 50% OFF.
+- Recompensa 2 (3 amigos): 1 Tag Grátis.
+- Recompensa 3 (5 amigos): 2 Tags Grátis.
+################################################################################
