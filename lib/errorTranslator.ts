@@ -14,7 +14,8 @@ export const translateSupabaseError = (errorMsg: string): string => {
   if (msg.includes('duplicate key value violates unique constraint')) return 'Este registro já existe.';
   if (msg.includes('network request failed')) return 'Erro de conexão. Verifique sua internet.';
   if (msg.includes('unexpected token')) return 'Erro de comunicação com o servidor.';
-  
+  if (msg.includes('error sending recovery email')) return 'Erro ao enviar email. Contate o suporte.';
+
   // Genéricos
   if (msg.includes('fetch')) return 'Falha ao buscar dados.';
   if (msg.includes('insert')) return 'Falha ao salvar dados.';

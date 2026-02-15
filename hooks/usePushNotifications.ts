@@ -10,7 +10,7 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
-  }),
+  } as Notifications.NotificationBehavior),
 });
 
 export function usePushNotifications() {
@@ -34,23 +34,23 @@ export function usePushNotifications() {
     if (Device.isDevice) {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
+
       if (finalStatus !== 'granted') {
         // alert('Falha ao obter permissão para notificações push!');
         return;
       }
-      
+
       try {
         token = (await Notifications.getExpoPushTokenAsync()).data;
       } catch (e) {
         console.log('Erro ao pegar token:', e);
       }
-      
+
       console.log('Expo Push Token:', token);
     } else {
       console.log('Emulador detectado: Notificações push não funcionam completamente em emuladores.');

@@ -51,6 +51,10 @@ export default function ProfileScreen() {
   );
 
   const menuItems = [
+    // Admin menu - Only visible for admin users
+    ...(userData?.role === 'admin' ? [
+      { icon: <Shield size={20} color="#FF6B35" />, label: 'Área do Admin', action: () => router.push('/admin/dashboard'), isAdmin: true }
+    ] : []),
     { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => router.push('/(tabs)/personal-data') },
     // Ação atualizada para navegar para a tela de dispositivos
     { icon: <Smartphone size={20} color={Colors.text} />, label: 'Meus Dispositivos', action: () => router.push('/devices') },
@@ -83,17 +87,18 @@ export default function ProfileScreen() {
               key={index}
               style={[
                 styles.menuItem,
-                index === menuItems.length - 1 && styles.lastMenuItem
+                index === menuItems.length - 1 && styles.lastMenuItem,
+                item.isAdmin && styles.adminMenuItem
               ]}
               onPress={item.action}
             >
               <View style={styles.menuItemLeft}>
-                <View style={styles.iconBox}>
+                <View style={[styles.iconBox, item.isAdmin && styles.adminIconBox]}>
                   {item.icon}
                 </View>
-                <Text style={styles.menuItemLabel}>{item.label}</Text>
+                <Text style={[styles.menuItemLabel, item.isAdmin && styles.adminLabel]}>{item.label}</Text>
               </View>
-              <ChevronRight size={20} color={Colors.textSecondary} />
+              <ChevronRight size={20} color={item.isAdmin ? '#FF6B35' : Colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </View>
@@ -213,6 +218,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_400Regular',
     color: Colors.text,
+  },
+  adminMenuItem: {
+    backgroundColor: 'rgba(255, 107, 53, 0.05)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',
+  },
+  adminIconBox: {
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+  },
+  adminLabel: {
+    color: '#FF6B35',
+    fontFamily: 'Montserrat_600SemiBold',
   },
   logoutButton: {
     marginTop: 60,

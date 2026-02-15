@@ -10,6 +10,7 @@ import { usePremium } from '../../context/PremiumContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
 import { useNavigation } from 'expo-router';
+import { fetchAddressFromNominatim } from '../../services/geocoding';
 
 export default function GlobalMapScreen() {
   const { user } = useAuth();
@@ -33,6 +34,7 @@ export default function GlobalMapScreen() {
   const [loading, setLoading] = useState(true);
   const [mapStyle, setMapStyle] = useState(StyleURL.Dark);
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [selectedDeviceAddress, setSelectedDeviceAddress] = useState<string>('');
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const fetchDevices = async () => {
@@ -160,6 +162,15 @@ export default function GlobalMapScreen() {
 
   const handleMarkerPress = (device: any) => {
     setSelectedDevice(device);
+    setSelectedDeviceAddress(device.endereco || 'Carregando endereço...');
+
+    // Fetch from Nominatim
+    if (device.ultima_lat && device.ultima_lng) {
+      fetchAddressFromNominatim(parseFloat(device.ultima_lat), parseFloat(device.ultima_lng))
+        .then(setSelectedDeviceAddress)
+        .catch(() => setSelectedDeviceAddress('Endereço indisponível'));
+    }
+
     // Centraliza no dispositivo selecionado
     if (cameraRef.current) {
       cameraRef.current.setCamera({
@@ -179,7 +190,7 @@ export default function GlobalMapScreen() {
           nome: selectedDevice.nome,
           lat: selectedDevice.ultima_lat,
           lng: selectedDevice.ultima_lng,
-          address: selectedDevice.endereco
+          address: selectedDeviceAddress
         }
       });
     }
@@ -272,7 +283,7 @@ export default function GlobalMapScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.deviceName}>{selectedDevice.nome}</Text>
               <Text style={styles.deviceAddress} numberOfLines={1}>
-                {selectedDevice.endereco || 'Endereço não disponível'}
+                {selectedDeviceAddress || 'Endereço não disponível'}
               </Text>
             </View>
           </View>

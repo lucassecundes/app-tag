@@ -2,17 +2,19 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { MapView, Camera, PointAnnotation, MarkerView, StyleURL, ShapeSource, CircleLayer, FillLayer, LineLayer } from '../../components/ExternalMap';
+import { StreetViewCard } from '../../components/StreetViewCard';
 import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock, X, Share2, Settings } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { usePremium } from '../../context/PremiumContext';
 import { useAuth } from '../../context/AuthContext';
 
 import { translateSupabaseError } from '../../lib/errorTranslator';
 import { Image } from 'react-native';
+import { fetchAddressFromNominatim } from '../../services/geocoding';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 100; // Limite superior (não sobe tudo)
@@ -123,11 +125,18 @@ export default function DeviceDetailScreen() {
   });
 
   useEffect(() => {
-    if (cameraRef.current && currentLocation.lat && currentLocation.lng) {
-      cameraRef.current.setCamera({
-        centerCoordinate: [currentLocation.lng, currentLocation.lat],
-        animationDuration: 1000,
-      });
+    if (currentLocation.lat && currentLocation.lng) {
+      // Fetch fresh address from Nominatim
+      fetchAddressFromNominatim(currentLocation.lat, currentLocation.lng)
+        .then(setAddress)
+        .catch(err => console.error('Error fetching address in Detail:', err));
+
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [currentLocation.lng, currentLocation.lat],
+          animationDuration: 1000,
+        });
+      }
     }
   }, [currentLocation]);
 
@@ -548,117 +557,125 @@ export default function DeviceDetailScreen() {
         </View>
       </Modal>
 
-      <GestureDetector gesture={gesture}>
-        <Animated.View style={[styles.bottomSheet, rBottomSheetStyle]}>
-          <View style={styles.dragHandleContainer}>
-            <View style={styles.dragHandle} />
-          </View>
-
-          {/* Conteúdo Visível Inicialmente (Peek) */}
-          <View style={styles.peekContent}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <MapPin size={20} color={Colors.primary} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Localização Atual</Text>
-                <Text style={styles.infoValue} numberOfLines={2}>{address}</Text>
-              </View>
+      <Animated.View style={[styles.bottomSheet, rBottomSheetStyle]}>
+        <GestureDetector gesture={gesture}>
+          <View style={{ backgroundColor: 'transparent' }}>
+            <View style={styles.dragHandleContainer}>
+              <View style={styles.dragHandle} />
             </View>
 
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Última atualização</Text>
-                <Text style={styles.statValue}>{getTimeAgo(lastUpdate)}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Status</Text>
-                <Text style={[styles.statValue, { color: Colors.success }]}>Conectado</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Conteúdo Expandido (Hidden) */}
-          <View style={styles.expandedContent}>
-            <View style={styles.divider} />
-
-            <Text style={styles.sectionTitle}>Monitoramento e Segurança</Text>
-            <View style={styles.alertsContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.alertCard,
-                  alertaCerca && styles.alertCardActive,
-
-                ]}
-                onPress={() => toggleAlert('cerca')}
-                disabled={loadingAlerts}
-              >
-                <View style={styles.alertHeader}>
-                  <View style={[
-                    styles.alertIconBox,
-                    alertaCerca && styles.alertIconBoxActive,
-
-                  ]}>
-                    <Shield size={20} color={alertaCerca ? Colors.white : Colors.textSecondary} />
-                  </View>
-                  <View style={styles.toggleIcon}>
-                    {alertaCerca ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
-                  </View>
+            {/* Conteúdo Visível Inicialmente (Peek) */}
+            <View style={styles.peekContent}>
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <MapPin size={20} color={Colors.primary} />
                 </View>
-                <Text style={[styles.alertTitle, alertaCerca && styles.alertTitleActive]}>Zona Segura</Text>
-                <Text style={styles.alertDesc}>Raio de 100m</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.alertCard,
-                  alertaMovimento && styles.alertCardActive,
-
-                ]}
-                onPress={() => toggleAlert('movimento')}
-                disabled={loadingAlerts}
-              >
-                <View style={styles.alertHeader}>
-                  <View style={[
-                    styles.alertIconBox,
-                    alertaMovimento && styles.alertIconBoxActive,
-
-                  ]}>
-                    <Clock size={20} color={alertaMovimento ? Colors.white : Colors.textSecondary} />
-                  </View>
-                  <View style={styles.toggleIcon}>
-                    {alertaMovimento ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
-                  </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Localização Atual</Text>
+                  <Text style={styles.infoValue} numberOfLines={2}>{address}</Text>
                 </View>
-                <Text style={[styles.alertTitle, alertaMovimento && styles.alertTitleActive]}>Movimento</Text>
-                <Text style={styles.alertDesc}>
-                  {alertaMovimento && movimentoSchedule
-                    ? `${movimentoSchedule.start} - ${movimentoSchedule.end}`
-                    : 'Fora de Horário'}
-                </Text>
-              </TouchableOpacity>
+              </View>
+
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Última atualização</Text>
+                  <Text style={styles.statValue}>{getTimeAgo(lastUpdate)}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Status</Text>
+                  <Text style={[styles.statValue, { color: Colors.success }]}>Conectado</Text>
+                </View>
+              </View>
             </View>
-
-            <Button
-              title="Ver Histórico Completo"
-              onPress={() => router.push('/(tabs)/history')}
-              variant="outline"
-              style={{ marginTop: 24 }}
-            />
-
-            <Button
-              title="Configurações do Dispositivo"
-              onPress={() => router.push({ pathname: '/devices/edit', params: { id } })}
-              variant="outline"
-              style={{ marginTop: 12, borderColor: Colors.border }}
-              textStyle={{ color: Colors.textSecondary }}
-              icon={<Settings size={20} color={Colors.textSecondary} />}
-            />
-
-            <View style={{ height: 40 }} />
           </View>
-        </Animated.View>
-      </GestureDetector>
+        </GestureDetector>
+
+        {/* Conteúdo Expandido (Hidden) */}
+        {/* Conteúdo Expandido (Hidden) */}
+        <ScrollView style={styles.expandedContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.divider} />
+
+          <StreetViewCard
+            latitude={currentLocation.lat}
+            longitude={currentLocation.lng}
+          />
+
+          <Text style={styles.sectionTitle}>Monitoramento e Segurança</Text>
+          <View style={styles.alertsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.alertCard,
+                alertaCerca && styles.alertCardActive,
+
+              ]}
+              onPress={() => toggleAlert('cerca')}
+              disabled={loadingAlerts}
+            >
+              <View style={styles.alertHeader}>
+                <View style={[
+                  styles.alertIconBox,
+                  alertaCerca && styles.alertIconBoxActive,
+
+                ]}>
+                  <Shield size={20} color={alertaCerca ? Colors.white : Colors.textSecondary} />
+                </View>
+                <View style={styles.toggleIcon}>
+                  {alertaCerca ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
+                </View>
+              </View>
+              <Text style={[styles.alertTitle, alertaCerca && styles.alertTitleActive]}>Zona Segura</Text>
+              <Text style={styles.alertDesc}>Raio de 100m</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.alertCard,
+                alertaMovimento && styles.alertCardActive,
+
+              ]}
+              onPress={() => toggleAlert('movimento')}
+              disabled={loadingAlerts}
+            >
+              <View style={styles.alertHeader}>
+                <View style={[
+                  styles.alertIconBox,
+                  alertaMovimento && styles.alertIconBoxActive,
+
+                ]}>
+                  <Clock size={20} color={alertaMovimento ? Colors.white : Colors.textSecondary} />
+                </View>
+                <View style={styles.toggleIcon}>
+                  {alertaMovimento ? <Lock size={16} color={Colors.success} /> : <Unlock size={16} color={Colors.textSecondary} />}
+                </View>
+              </View>
+              <Text style={[styles.alertTitle, alertaMovimento && styles.alertTitleActive]}>Movimento</Text>
+              <Text style={styles.alertDesc}>
+                {alertaMovimento && movimentoSchedule
+                  ? `${movimentoSchedule.start} - ${movimentoSchedule.end}`
+                  : 'Fora de Horário'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Button
+            title="Ver Histórico Completo"
+            onPress={() => router.push('/(tabs)/history')}
+            variant="outline"
+            style={{ marginTop: 24 }}
+          />
+
+          <Button
+            title="Configurações do Dispositivo"
+            onPress={() => router.push({ pathname: '/devices/edit', params: { id } })}
+            variant="outline"
+            style={{ marginTop: 12, borderColor: Colors.border }}
+            textStyle={{ color: Colors.textSecondary }}
+            icon={<Settings size={20} color={Colors.textSecondary} />}
+          />
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </Animated.View>
     </View>
   );
 }

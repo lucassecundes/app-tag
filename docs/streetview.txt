@@ -1,0 +1,62 @@
+IMPLEMENTAÇÃO DO GOOGLE STREET VIEW (WebView/Iframe)
+=====================================================
+
+Esta documentação descreve a técnica utilizada para implementar a visualização do Google Street View no card do veículo na versão Web, para que possa ser replicada no aplicativo nativo.
+
+1. URL BASE E PARÂMETROS
+------------------------
+A soluçāo utiliza uma URL específica do Google Maps carregada dentro de um componente WebView (ou Iframe na web). Esta URL força o carregamento da camada de Street View (Panorama) ao invés do mapa cartográfico padrão.
+
+URL Padrão:
+https://maps.google.com/maps?layer=c&cbll={LATITUDE},{LONGITUDE}&cbp=12,0,0,0,0&output=svembed
+
+2. DETALHAMENTO DOS PARÂMETROS
+------------------------------
+Cada parâmetro na URL é crucial para o funcionamento correto:
+
+- layer=c
+  Ativa a camada "Street View" (Camera). Sem isso, o mapa abre no modo padrão.
+
+- cbll={LATITUDE},{LONGITUDE}
+  Define as coordenadas exatas onde a câmera do Street View deve ser posicionada.
+  Exemplo: cbll=-23.550520,-46.633308
+
+- cbp=12,0,0,0,0
+  Configura a câmera do panorama.
+  Formato: streetview_window_id, heading, tilt, zoom, pitch
+  * 12: Valor padrão de compatibilidade.
+  * 0 (primeiro zero): Heading (Rotação). 0 aponta para o Norte. Se quiser que a câmera aponte para a direção do veículo, substitua este valor pelo curso (bearing/heading) do GPS do veículo.
+  * 0,0,0: Tilt, Zoom e Pitch (basicamente câmera reta e sem zoom).
+
+- output=svembed
+  * CRÍTICO *: Este parâmetro força a interface de "Embed" do Street View.
+  Se usar apenas "output=embed", o Google pode mostrar o mapa 2D se não houver um panorama exato. O "svembed" força a busca pelo panorama mais próximo e renderiza a visualização 360º.
+
+3. COMO IMPLEMENTAR NO APP NATIVO
+---------------------------------
+Para replicar o comportamento no aplicativo mobile (React Native, Flutter, Swift, Kotlin):
+
+Opção A: WebView (Recomendada para paridade com a Web e Custo Zero)
+-------------------------------------------------------------------
+Utilize um componente WebView para carregar a URL montada dinamicamente.
+
+Exemplo (Lógica Genérica):
+String lat = veiculo.latitude;
+String lng = veiculo.longitude;
+String url = "https://maps.google.com/maps?layer=c&cbll=" + lat + "," + lng + "&cbp=12,0,0,0,0&output=svembed";
+
+webview.loadUrl(url);
+
+* DICA: Certifique-se de habilitar JavaScript no WebView.
+* DICA: Defina a altura do WebView para algo fixo (ex: 200dp) para manter o layout do card.
+
+Opção B: SDK Nativo do Google Maps (Alternativa)
+------------------------------------------------
+O Google possui SDKs nativos (Google Maps SDK for Android/iOS) que têm um componente "StreetViewPanorama".
+- Prós: Performance nativa, transições mais suaves, controle total por gestos.
+- Contras: Requer configuração de API Key no Google Cloud Console e pode ter custos dependendo do volume de uso (cotas da API). A solução via WebView (acima) geralmente é isenta de cotas para visualização simples (Embed).
+
+4. TRATAMENTO DE ERROS
+----------------------
+Se a latitude/longitude fornecida for em uma área onde o Google Car não passou (sem cobertura Street View), o "svembed" pode exibir uma tela preta ou uma mensagem genérica.
+- Melhoria sugerida: Monitorar o carregamento da URL e, se falhar ou se for uma área remota conhecida, ocultar o WebView ou mostrar um placeholder.

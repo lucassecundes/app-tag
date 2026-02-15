@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Dimensions, Alert, Platform } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown } from 'lucide-react-native';
+import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown, ArrowLeft, Tag } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { format, parseISO, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -23,6 +23,7 @@ export default function HistoryScreen() {
 
   const [history, setHistory] = useState<any[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
+  const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -41,6 +42,22 @@ export default function HistoryScreen() {
   const [tempDateEnd, setTempDateEnd] = useState(new Date());
 
   const cameraRef = useRef<any>(null);
+
+  const fetchDevices = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('tags')
+        .select('*')
+        .eq('usuario_id', user.id)
+        .order('nome', { ascending: true });
+
+      if (error) throw error;
+      setDevices(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar dispositivos:', error);
+    }
+  };
 
   const fetchHistory = async () => {
     if (!user) return;
@@ -98,7 +115,15 @@ export default function HistoryScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      fetchHistory();
+      if (filterTagId) {
+        setLoading(true);
+        fetchHistory();
+      } else {
+        setLoading(true);
+        setHistory([]);
+        setFilteredHistory([]);
+        fetchDevices().finally(() => setLoading(false));
+      }
     }, [user, filterTagId])
   );
 
@@ -306,40 +331,73 @@ export default function HistoryScreen() {
     </View>
   );
 
+  const renderDeviceItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={styles.deviceCard}
+      onPress={() => router.setParams({ tagId: item.id })}
+    >
+      <View style={styles.deviceCardIcon}>
+        <Tag size={24} color={Colors.primary} />
+      </View>
+      <View style={styles.deviceCardContent}>
+        <Text style={styles.deviceCardName}>{item.nome || 'Dispositivo'}</Text>
+
+        <Text style={styles.deviceCardCode}>{item.codigo}</Text>
+      </View>
+      <ChevronDown size={20} color={Colors.textSecondary} style={{ transform: [{ rotate: '-90deg' }] }} />
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       {/* Header Fixo */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Histórico</Text>
-          <TouchableOpacity
-            style={styles.filterSelector}
-            onPress={() => setShowFilterModal(true)}
-          >
-            <Text style={styles.filterSelectorText}>{getFilterLabel(activeFilter)}</Text>
-            <ChevronDown size={14} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => setShowFilterModal(true)}
-          >
-            <Filter size={20} color={Colors.text} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.iconButton, styles.primaryIconButton]}
-            onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-          >
-            {viewMode === 'list' ? (
-              <MapIcon size={20} color={Colors.white} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {filterTagId && (
+            <TouchableOpacity
+              onPress={() => router.setParams({ tagId: '' })}
+              style={styles.backIcon}
+            >
+              <ArrowLeft size={24} color={Colors.text} />
+            </TouchableOpacity>
+          )}
+          <View>
+            <Text style={styles.title}>{filterTagId ? 'Histórico' : 'Selecionar Veículo'}</Text>
+            {filterTagId ? (
+              <TouchableOpacity
+                style={styles.filterSelector}
+                onPress={() => setShowFilterModal(true)}
+              >
+                <Text style={styles.filterSelectorText}>{getFilterLabel(activeFilter)}</Text>
+                <ChevronDown size={14} color={Colors.primary} />
+              </TouchableOpacity>
             ) : (
-              <List size={20} color={Colors.white} />
+              <Text style={styles.subtitle}>Escolha um dispositivo para ver o histórico</Text>
             )}
-          </TouchableOpacity>
+          </View>
         </View>
+
+        {filterTagId && (
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => setShowFilterModal(true)}
+            >
+              <Filter size={20} color={Colors.text} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.iconButton, styles.primaryIconButton]}
+              onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+            >
+              {viewMode === 'list' ? (
+                <MapIcon size={20} color={Colors.white} />
+              ) : (
+                <List size={20} color={Colors.white} />
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Conteúdo Principal */}
@@ -349,6 +407,23 @@ export default function HistoryScreen() {
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
+      ) : !filterTagId ? (
+        <FlatList
+          data={devices}
+          keyExtractor={(item) => item.id}
+          renderItem={renderDeviceItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchDevices().finally(() => setRefreshing(false)); }} tintColor={Colors.primary} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Tag size={48} color={Colors.textSecondary} />
+              <Text style={styles.emptyTitle}>Nenhum dispositivo</Text>
+              <Text style={styles.emptyText}>Você não possui dispositivos vinculados.</Text>
+            </View>
+          }
+        />
       ) : (
         <View style={{ flex: 1 }}>
           {viewMode === 'list' ? (
@@ -584,6 +659,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 120,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  backIcon: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  deviceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  deviceCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.surfaceHighlight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  deviceCardContent: {
+    flex: 1,
+  },
+  deviceCardName: {
+    fontSize: 16,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  deviceCardCode: {
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
+    color: Colors.textSecondary,
   },
   centerState: {
     flex: 1,

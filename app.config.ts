@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Tagpro+",
   slug: "tagpro-rastreamento",
-  version: "1.1.6",
+  version: "1.1.7",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "tagpro",

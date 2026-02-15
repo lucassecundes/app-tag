@@ -24,7 +24,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
-          
+
           // Skip if href is null (hidden tabs)
           // Note: TypeScript might complain about href not existing on BottomTabNavigationOptions,
           // but it is injected by Expo Router. We cast to any to avoid the error.
@@ -61,7 +61,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                   accessibilityRole="button"
                   accessibilityState={isFocused ? { selected: true } : {}}
                   accessibilityLabel={options.tabBarAccessibilityLabel}
-                  testID={options.tabBarTestID}
+                  testID={(options as any).tabBarTestID}
                   onPress={onPress}
                   onLongPress={onLongPress}
                   style={styles.centerButton}
@@ -91,12 +91,12 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
               style={styles.tabItem}
             >
               <View style={[
-                styles.iconContainer, 
+                styles.iconContainer,
                 isFocused && styles.activeIconContainer
               ]}>
-                <IconComponent 
-                  size={24} 
-                  color={isFocused ? Colors.primary : Colors.textSecondary} 
+                <IconComponent
+                  size={24}
+                  color={isFocused ? Colors.primary : Colors.textSecondary}
                   strokeWidth={isFocused ? 2.5 : 2}
                 />
               </View>
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     backgroundColor: 'transparent',
-    pointerEvents: 'box-none', 
+    pointerEvents: 'box-none',
   },
   content: {
     flexDirection: 'row',
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 35,
     paddingHorizontal: 10,
-    
+
     // Shadow
     shadowColor: "#000",
     shadowOffset: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    
+
     // Shadow for button
     shadowColor: Colors.primary,
     shadowOffset: {

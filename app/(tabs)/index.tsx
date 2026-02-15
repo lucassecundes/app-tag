@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { translateSupabaseError } from '../../lib/errorTranslator';
 import { Image } from 'react-native';
+import { DeviceListItem } from '../../components/DeviceListItem';
 
 export default function DeviceListScreen() {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export default function DeviceListScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [targetUserId, setTargetUserId] = useState('');
+  const [targetTagCode, setTargetTagCode] = useState('');
   const [filterActive, setFilterActive] = useState(false);
   const [targetUserLabel, setTargetUserLabel] = useState(''); // Store the email or name for display
 
@@ -83,6 +85,7 @@ export default function DeviceListScreen() {
 
   const selectUser = (selectedUser: any) => {
     setTargetUserId(selectedUser.auth_user_id);
+    setTargetTagCode(''); // Clear tag code if selecting user
     setTargetUserLabel(selectedUser.email || selectedUser.nome || selectedUser.auth_user_id);
     setFilterActive(true);
     setShowFilterModal(false);
@@ -126,7 +129,7 @@ export default function DeviceListScreen() {
     }
   };
 
-  const fetchDevices = async () => {
+  const fetchDevices = React.useCallback(async () => {
     if (!user) return;
     setErrorMsg(null);
     try {
@@ -137,10 +140,18 @@ export default function DeviceListScreen() {
         .select('*')
         .order('ultima_comunicacao', { ascending: false });
 
-      // Se for admin e tiver filtro ativo, busca pelo ID alvo
-      if (isAdmin && filterActive && targetUserId) {
-        // Tenta buscar pelo usuario_id (UUID)
-        query = query.eq('usuario_id', targetUserId);
+      // Se for admin e tiver filtro ativo
+      if (isAdmin && filterActive) {
+        if (targetUserId) {
+          // Busca pelo usuario_id
+          query = query.eq('usuario_id', targetUserId);
+        } else if (targetTagCode) {
+          // Busca pelo código da tag
+          // Usando ilike para ser case-insensitive e permitir busca parcial se desejar, 
+          // mas eq é melhor para código exato. O usuário pediu "pesquisar por codigo".
+          // Vamos usar ilike para flexibilidade
+          query = query.ilike('codigo', `%${targetTagCode}%`);
+        }
       } else {
         // Comportamento padrão: busca os dispositivos do próprio usuário
         query = query.eq('usuario_id', user.id);
@@ -162,26 +173,32 @@ export default function DeviceListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [user, isAdmin, filterActive, targetUserId, targetTagCode]);
 
   const applyFilter = () => {
-    setTargetUserLabel(targetUserId); // Use ID as label when manually filtering
+    if (targetTagCode) {
+      setTargetUserLabel(`Código: ${targetTagCode}`);
+      setTargetUserId(''); // Clear user ID if using code
+    } else {
+      setTargetUserLabel(targetUserId);
+    }
     setFilterActive(true);
     setShowFilterModal(false);
     setLoading(true);
-    fetchDevices();
+    // fetchDevices will be called by useFocusEffect or we call it here?
+    // Since fetchDevices is a dependency of useFocusEffect now (via useCallback ref change?), 
+    // actually useFocusEffect depends on callback consistency.
+    // Better to just call it. But since state update is async, focus effect handles it.
   };
 
   const clearFilter = () => {
     setTargetUserId('');
+    setTargetTagCode('');
     setFilterActive(false);
     setLoading(true);
-    // fetchDevices será chamado pelo useEffect quando filterActive mudar, ou podemos chamar manualmente
-    // mas precisamos garantir que o estado atualizou. 
-    // Melhor abordagem: chamar fetchDevices na próxima renderização ou usar um useEffect dependente.
-    // Para simplificar, vou forçar a chamada com o estado "limpo" lógico:
     setTimeout(() => {
-      fetchDevices(); // Re-busca sem filtros (volta ao padrão user.id)
+      // Trigger refresh
+      setFilterActive(false); // Ensure state
     }, 100);
   };
 
@@ -190,7 +207,7 @@ export default function DeviceListScreen() {
       if (user) {
         fetchDevices();
       }
-    }, [user, filterActive]) // Recarrega se o filtro mudar
+    }, [user, fetchDevices])
   );
 
   useEffect(() => {
@@ -206,7 +223,7 @@ export default function DeviceListScreen() {
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, [user]);
+  }, [fetchDevices]); // Added fetchDevices dependency to ensure latest closure is used
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -258,67 +275,13 @@ export default function DeviceListScreen() {
 
   const renderItem = ({ item }: { item: any }) => {
     const timeAgo = getTimeAgo(item.ultima_comunicacao);
-    const hasLocation = !!item.endereco;
 
     return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => handleDevicePress(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardIcon}>
-          {item.imagem_url && !imageErrors[item.id] ? (
-            <Image
-              source={{ uri: item.imagem_url }}
-              style={styles.deviceImage}
-              resizeMode="cover"
-              onError={() => {
-                console.log(`Erro ao carregar imagem para o dispositivo ${item.id}`);
-                setImageErrors(prev => ({ ...prev, [item.id]: true }));
-              }}
-            />
-          ) : (
-            getIcon(item.icone)
-          )}
-        </View>
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{item.nome || 'Dispositivo sem nome'}</Text>
-
-          {/* Alteração: Tempo movido para junto do ID */}
-          <Text style={styles.cardSubtitle}>
-            ID: {item.codigo || item.id?.substring(0, 8)}
-            {timeAgo && <Text style={{ color: Colors.primary }}> • {timeAgo}</Text>}
-          </Text>
-
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: item.ultima_lat ? Colors.success : Colors.warning }]} />
-
-            <Text style={styles.statusText} numberOfLines={1}>
-              {hasLocation ? item.endereco : 'Aguardando posição'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.rightActions}>
-          {(item.alerta_cerca || item.alerta_movimento) && (
-            <View style={styles.alertsContainer}>
-              {item.alerta_cerca && (
-                <View style={[styles.alertBadge, { backgroundColor: 'rgba(255, 68, 68, 0.1)' }]}>
-                  <ShieldAlert size={16} color={Colors.error} />
-                </View>
-              )}
-              {item.alerta_movimento && (
-                <View style={[styles.alertBadge, { backgroundColor: 'rgba(255, 187, 51, 0.1)' }]}>
-                  <Bell size={16} color={Colors.warning} />
-                </View>
-              )}
-            </View>
-          )}
-          <View style={styles.actionIcon}>
-            <MapPin size={20} color={Colors.primary} />
-          </View>
-        </View>
-      </TouchableOpacity>
+      <DeviceListItem
+        item={item}
+        onPress={handleDevicePress}
+        timeAgo={timeAgo}
+      />
     );
   };
 
@@ -410,17 +373,20 @@ export default function DeviceListScreen() {
 
             <View style={styles.modalDivider} />
 
-            <Text style={styles.modalLabel}>Ou ID Manual (UUID)</Text>
+            <Text style={styles.modalLabel}>Ou Pesquisar por Código (TAG)</Text>
             <Input
-              placeholder="Ex: 123e4567-e89b..."
-              value={targetUserId}
-              onChangeText={setTargetUserId}
-              autoCapitalize="none"
+              placeholder="Ex: TAG-123456"
+              value={targetTagCode}
+              onChangeText={(text) => {
+                setTargetTagCode(text);
+                if (text) setTargetUserId(''); // Clear user ID if checking code
+              }}
+              autoCapitalize="characters"
               icon={<Tag size={20} color={Colors.textSecondary} />}
             />
 
             <Button
-              title="APLICAR FILTRO MANUAL"
+              title="APLICAR FILTRO"
               onPress={applyFilter}
               style={{ marginTop: 16 }}
               variant="outline"
