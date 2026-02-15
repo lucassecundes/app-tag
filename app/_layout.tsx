@@ -29,9 +29,14 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
   };
 }
 
+import { AppUpdateModal } from '../components/AppUpdateModal';
+import { useAppVersionCheck } from '../hooks/useAppVersionCheck';
+
 export default function RootLayout() {
   useFrameworkReady();
   usePushNotifications();
+
+  const { isUpdateAvailable, openStore, forceUpdate } = useAppVersionCheck();
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -62,13 +67,21 @@ export default function RootLayout() {
         <AuthProvider>
           <PremiumProvider>
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="devices" />
               <Stack.Screen name="device-detail/[id]" />
               <Stack.Screen name="+not-found" />
               <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="admin" options={{ headerShown: false }} />
             </Stack>
+
+            <AppUpdateModal
+              visible={isUpdateAvailable}
+              onUpdate={openStore}
+              forceUpdate={forceUpdate}
+            />
+
             {/* 
               Configuração da StatusBar para Edge-to-Edge:
               - translucent: permite que o conteúdo passe por baixo
