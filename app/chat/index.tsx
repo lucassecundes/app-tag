@@ -7,7 +7,7 @@ import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../../context/PremiumContext';
 import { ChatService, ChatMessage } from '../../services/chatService';
-import { AIService } from '../../services/aiService';
+import { AIService, detectInjection } from '../../services/aiService';
 
 // Typing Indicator Component
 const TypingIndicator = () => {
@@ -86,6 +86,22 @@ export default function ChatScreen() {
     if (!text.trim() || !user || loading) return;
 
     const userMessageContent = text.trim();
+
+    // Validação client-side: comprimento máximo
+    if (userMessageContent.length > 600) {
+      Alert.alert('Mensagem muito longa', 'Por favor, envie mensagens com no máximo 600 caracteres.');
+      return;
+    }
+
+    // Validação client-side: detecção de Prompt Injection
+    if (detectInjection(userMessageContent)) {
+      Alert.alert(
+        'Mensagem não permitida',
+        'Sua mensagem contém conteúdo não permitido. Por favor, faça perguntas relacionadas aos seus dispositivos.'
+      );
+      return;
+    }
+
     setInputText('');
     setLoading(true);
 
@@ -102,8 +118,7 @@ export default function ChatScreen() {
       // Save user message
       await ChatService.saveMessage(user.id, 'user', userMessageContent);
 
-      // Call AI
-      // Convert internal messages to OpenAI format
+      // Converte histórico para formato OpenAI (limitado às últimas 10 mensagens)
       const historyForAI = messages.slice(-10).map(m => ({
         role: m.role,
         content: m.content
@@ -112,7 +127,7 @@ export default function ChatScreen() {
       historyForAI.push({ role: 'user', content: userMessageContent });
 
       const aiResponse = await AIService.sendMessage(historyForAI, user.id);
-      const aiContent = aiResponse.content || 'Desculpe, não consegui processar sua resposta.';
+      const aiContent = aiResponse?.content || 'Desculpe, não consegui processar sua resposta.';
 
       const newAiMessage: ChatMessage = {
         role: 'assistant',
@@ -229,7 +244,7 @@ export default function ChatScreen() {
               onChangeText={setInputText}
               placeholderTextColor={Colors.textSecondary}
               multiline
-              maxLength={500}
+              maxLength={600}
             />
             <TouchableOpacity
               style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}

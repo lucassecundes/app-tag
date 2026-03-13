@@ -57,7 +57,7 @@ serve(async (req) => {
         let data = {};
 
         if (payload.type === 'new_order') {
-            title = '🛒 Novo Pedido!';
+            title = '💰 Novo Pedido!';
             body = `Novo pedido de ${payload.data.customerName || payload.data.customerEmail || 'cliente'}`;
             if (payload.data.totalAmount) {
                 body += ` - R$ ${payload.data.totalAmount.toFixed(2)}`;
@@ -68,7 +68,7 @@ serve(async (req) => {
                 screen: `/admin/orders/${payload.data.id}`,
             };
         } else if (payload.type === 'new_abandoned_cart') {
-            title = '🛍️ Carrinho Abandonado';
+            title = '🛒 Carrinho Abandonado';
             body = `${payload.data.customerName || payload.data.customerEmail || 'Cliente'} abandonou um carrinho`;
             if (payload.data.productName) {
                 body += ` - ${payload.data.productName}`;

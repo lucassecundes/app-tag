@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { MapView, Camera, PointAnnotation, MarkerView, StyleURL, ShapeSource, CircleLayer, FillLayer, LineLayer } from '../../components/ExternalMap';
 import { StreetViewCard } from '../../components/StreetViewCard';
-import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock, X, Share2, Settings } from 'lucide-react-native';
+import { ArrowLeft, Layers, Eye, MapPin, Car, Truck, Bike, Bus, Package, Smartphone, PlayCircle, Shield, Clock, Lock, Unlock, X, Share2, Settings, BatteryFull, BatteryMedium, BatteryLow } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { translateSupabaseError } from '../../lib/errorTranslator';
 import { Image } from 'react-native';
 import { fetchAddressFromNominatim } from '../../services/geocoding';
+import { PulsingDot } from '../../components/PulsingDot';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 100; // Limite superior (não sobe tudo)
@@ -69,6 +70,7 @@ export default function DeviceDetailScreen() {
   const initialLng = parseFloat(params.lng as string) || -46.633308;
 
   const [mapStyle, setMapStyle] = useState(StyleURL.Dark);
+  const [is3D, setIs3D] = useState(true);
   const [currentLocation, setCurrentLocation] = useState({ lat: initialLat, lng: initialLng });
   const [address, setAddress] = useState(params.address as string || 'Carregando endereço...');
   const [lastUpdate, setLastUpdate] = useState(new Date().toISOString());
@@ -80,6 +82,9 @@ export default function DeviceDetailScreen() {
 
   const [alertaMovimento, setAlertaMovimento] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+
+  // Battery
+  const [battery, setBattery] = useState<number | null | undefined>(null);
 
   // Schedule Modal State
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -135,10 +140,11 @@ export default function DeviceDetailScreen() {
         cameraRef.current.setCamera({
           centerCoordinate: [currentLocation.lng, currentLocation.lat],
           animationDuration: 1000,
+          pitch: is3D ? 65 : 0,
         });
       }
     }
-  }, [currentLocation]);
+  }, [currentLocation, is3D]);
 
   useEffect(() => {
     const fetchDeviceData = async () => {
@@ -207,6 +213,7 @@ export default function DeviceDetailScreen() {
 
     if (data.endereco) setAddress(data.endereco);
     if (data.ultima_comunicacao) setLastUpdate(data.ultima_comunicacao);
+    if (data.battery !== undefined) setBattery(data.battery);
   };
 
   const fenceGeoJSON = useMemo(() => {
@@ -218,6 +225,10 @@ export default function DeviceDetailScreen() {
 
   const toggleMapStyle = () => {
     setMapStyle((prev: string) => prev === StyleURL.Dark ? StyleURL.SatelliteStreet : StyleURL.Dark);
+  };
+
+  const toggle3D = () => {
+    setIs3D(prev => !prev);
   };
 
   const openStreetView = () => {
@@ -371,6 +382,15 @@ export default function DeviceDetailScreen() {
     return `${Math.floor(hours / 24)}d atrás`;
   };
 
+  const getBatteryInfo = (level: number | null | undefined) => {
+    if (level === 3) return { icon: BatteryFull, color: Colors.success, label: 'Bateria Cheia', bg: 'rgba(0, 200, 81, 0.12)', bars: 3 };
+    if (level === 2) return { icon: BatteryMedium, color: Colors.warning, label: 'Meia Bateria', bg: 'rgba(255, 187, 51, 0.12)', bars: 2 };
+    if (level === 1) return { icon: BatteryLow, color: Colors.error, label: 'Bateria Baixa', bg: 'rgba(255, 68, 68, 0.12)', bars: 1 };
+    return null;
+  };
+
+  const batteryInfo = getBatteryInfo(battery);
+
   const getMarkerIcon = () => {
     const size = 24;
     switch (type) {
@@ -399,6 +419,7 @@ export default function DeviceDetailScreen() {
           defaultSettings={{
             centerCoordinate: [currentLocation.lng, currentLocation.lat],
             zoomLevel: 16,
+            pitch: is3D ? 65 : 0,
           }}
         />
 
@@ -427,6 +448,7 @@ export default function DeviceDetailScreen() {
           coordinate={[currentLocation.lng, currentLocation.lat]}
         >
           <View style={styles.markerContainer}>
+            <PulsingDot color={Colors.primary} size={80} />
             <View style={[
               styles.markerBubble,
               (alertaCerca || alertaMovimento) && { borderColor: Colors.error }
@@ -585,6 +607,26 @@ export default function DeviceDetailScreen() {
                   <Text style={styles.statLabel}>Status</Text>
                   <Text style={[styles.statValue, { color: Colors.success }]}>Conectado</Text>
                 </View>
+                {batteryInfo && (
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Bateria</Text>
+                    <View style={styles.batteryStatRow}>
+                      <batteryInfo.icon size={16} color={batteryInfo.color} />
+                      <Text style={[styles.statValue, { color: batteryInfo.color, marginLeft: 4 }]}>{batteryInfo.label}</Text>
+                    </View>
+                    <View style={styles.batteryBars}>
+                      {[1, 2, 3].map(i => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.batteryBar,
+                            { backgroundColor: i <= batteryInfo.bars ? batteryInfo.color : Colors.border }
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -659,7 +701,7 @@ export default function DeviceDetailScreen() {
 
           <Button
             title="Ver Histórico Completo"
-            onPress={() => router.push('/(tabs)/history')}
+            onPress={() => router.push({ pathname: '/(tabs)/history', params: { tagId: id } })}
             variant="outline"
             style={{ marginTop: 24 }}
           />
@@ -1020,5 +1062,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     fontSize: 16,
     textAlign: 'center',
+  },
+  batteryStatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  batteryBars: {
+    flexDirection: 'row',
+    gap: 3,
+    marginTop: 5,
+  },
+  batteryBar: {
+    width: 12,
+    height: 4,
+    borderRadius: 2,
   },
 });

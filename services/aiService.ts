@@ -1,227 +1,97 @@
-import OpenAI from 'openai';
+/**
+ * aiService.ts
+ *
+ * Integração com o assistente de IA via Supabase Edge Function.
+ * A chave da OpenAI NÃO fica mais no client — ela fica como secret
+ * no servidor (Edge Function `ai-chat`).
+ *
+ * Proteções mantidas no client:
+ *  - Validação de comprimento de mensagem
+ *  - Detecção básica de Prompt Injection antes de enviar
+ *  - Rate limit local (evita chamadas redundantes)
+ */
+
 import { supabase } from '../lib/supabase';
-import { ChatService } from './chatService';
 
-const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-
-if (!OPENAI_API_KEY) {
-  console.warn('⚠️ OpenAI API Key missing. AI Chat will not function correctly.');
-}
-
-const openai = new OpenAI({
-  apiKey: OPENAI_API_KEY || 'dummy-key',
-  dangerouslyAllowBrowser: true, // Needed for Expo/React Native
-});
-
-// Rate Limiting
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
+// --- Rate Limiting local (primeira barreira, a Edge Function tem outra) ---
+const RATE_LIMIT_WINDOW = 60_000; // 1 minuto
 const MAX_REQUESTS = 10;
 const requestTimestamps: Record<string, number[]> = {};
 
 function checkRateLimit(userId: string): boolean {
   const now = Date.now();
-  if (!requestTimestamps[userId]) {
-    requestTimestamps[userId] = [];
-  }
-  
-  // Filter out old timestamps
-  requestTimestamps[userId] = requestTimestamps[userId].filter(t => now - t < RATE_LIMIT_WINDOW);
-  
-  if (requestTimestamps[userId].length >= MAX_REQUESTS) {
-    return false;
-  }
-  
+  if (!requestTimestamps[userId]) requestTimestamps[userId] = [];
+  requestTimestamps[userId] = requestTimestamps[userId].filter(
+    (t) => now - t < RATE_LIMIT_WINDOW
+  );
+  if (requestTimestamps[userId].length >= MAX_REQUESTS) return false;
   requestTimestamps[userId].push(now);
   return true;
 }
 
-// Tools Definitions
-const tools = [
-  {
-    type: 'function',
-    function: {
-      name: 'get_user_devices',
-      description: 'Get a list of all devices owned by the user, including their status and last communication.',
-      parameters: {
-        type: 'object',
-        properties: {},
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_device_location',
-      description: 'Get the current location (latitude, longitude, address) of a specific device by name or ID.',
-      parameters: {
-        type: 'object',
-        properties: {
-          deviceName: {
-            type: 'string',
-            description: 'The name or partial name of the device to find.',
-          },
-        },
-        required: ['deviceName'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_visited_places',
-      description: 'Get a list of frequently visited addresses for the user.',
-      parameters: {
-        type: 'object',
-        properties: {
-          limit: {
-            type: 'number',
-            description: 'Number of places to return (default 5).',
-          },
-        },
-      },
-    },
-  },
+// --- Detecção de Prompt Injection (client-side, primeira barreira) ---
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+instructions/i,
+  /forget\s+(all\s+)?previous/i,
+  /you\s+are\s+now/i,
+  /new\s+instructions?\s*:/i,
+  /system\s*:/i,
+  /\[INST\]/i,
+  /ignore\s+as\s+instru[çc][oõ]es/i,
+  /esqueça\s+(tudo|as\s+instru)/i,
+  /ignore\s+as\s+regras/i,
+  /você\s+agora\s+é/i,
+  /act\s+as\s+(if\s+you\s+are|a|an)\s+/i,
+  /pretend\s+(you\s+are|to\s+be)/i,
 ];
 
-// Tool Implementations
-async function getUserDevices(userId: string) {
-  console.log('AI Tool: getUserDevices for', userId);
-  const { data, error } = await supabase
-    .from('tags')
-    .select('id, nome, icone, ultima_comunicacao, endereco')
-    .eq('usuario_id', userId);
+const MAX_MESSAGE_LENGTH = 600;
 
-  if (error) {
-    console.error('AI Tool Error (getUserDevices):', error);
-    throw new Error(error.message);
-  }
-  console.log('AI Tool: Found', data?.length, 'devices');
-  return JSON.stringify(data);
-}
-
-async function getDeviceLocation(userId: string, deviceName: string) {
-  console.log('AI Tool: getDeviceLocation for', deviceName, 'user', userId);
-  const { data, error } = await supabase
-    .from('tags')
-    .select('id, nome, ultima_lat, ultima_lng, endereco, ultima_comunicacao')
-    .eq('usuario_id', userId)
-    .ilike('nome', `%${deviceName}%`)
-    .limit(1);
-
-  if (error) {
-    console.error('AI Tool Error (getDeviceLocation):', error);
-    throw new Error(error.message);
-  }
-  if (!data || data.length === 0) return 'Dispositivo não encontrado.';
-  return JSON.stringify(data[0]);
-}
-
-async function getVisitedPlaces(userId: string, limit = 5) {
-  console.log('AI Tool: getVisitedPlaces for', userId, 'limit', limit);
-  const { data, error } = await supabase
-    .from('visited_addresses')
-    .select('address, visit_count, last_visit')
-    .eq('user_id', userId)
-    .order('visit_count', { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error('AI Tool Error (getVisitedPlaces):', error);
-    throw new Error(error.message);
-  }
-  console.log('AI Tool: Found', data?.length, 'visited places');
-  return JSON.stringify(data);
+export function detectInjection(text: string): boolean {
+  return INJECTION_PATTERNS.some((p) => p.test(text));
 }
 
 export const AIService = {
-  async sendMessage(messages: any[], userId: string) {
-    try {
-      if (!checkRateLimit(userId)) {
+  async sendMessage(
+    messages: Array<{ role: string; content: string }>,
+    _userId: string // mantido por compatibilidade, mas userId real vem do JWT
+  ) {
+    // Validação local da última mensagem do usuário
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    if (lastUserMsg) {
+      if (lastUserMsg.content.length > MAX_MESSAGE_LENGTH) {
         return {
           role: 'assistant',
-          content: 'Você atingiu o limite de mensagens por minuto. Por favor, aguarde um pouco.'
+          content: 'Por favor, envie mensagens mais curtas (máximo 600 caracteres).',
         };
       }
-
-      if (!OPENAI_API_KEY) {
-        return { 
-          role: 'assistant', 
-          content: 'Erro: Chave de API da OpenAI não configurada. Por favor, configure a variável EXPO_PUBLIC_OPENAI_API_KEY.' 
+      if (detectInjection(lastUserMsg.content)) {
+        return {
+          role: 'assistant',
+          content:
+            'Sua mensagem contém conteúdo não permitido. Sou um assistente de rastreamento e só posso ajudar com informações sobre seus dispositivos.',
         };
       }
+    }
 
-      // Fetch dynamic system prompt from Supabase
-      const systemPrompt = await ChatService.getSystemPrompt();
-      const defaultSystemPrompt = `Você é o assistente virtual inteligente do app Tag Nativo. 
-          Sua função é ajudar o usuário a gerenciar seus dispositivos de rastreamento (tags).
-          Você pode listar dispositivos, verificar localização atual e histórico de endereços.
-          Sempre seja polido, conciso e direto. Responda em Português do Brasil.
-          Se o usuário perguntar algo fora do contexto de rastreamento, gentilmente recuse e volte ao foco.`;
-
-      // Add system prompt if not present
-      const fullMessages = [
-        {
-          role: 'system',
-          content: systemPrompt || defaultSystemPrompt
-        },
-        ...messages
-      ];
-
-      const runner = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: fullMessages,
-        tools: tools as any,
-        tool_choice: 'auto',
-      });
-
-      const message = runner.choices[0].message;
-
-      // Handle Tool Calls
-      if (message.tool_calls) {
-        const toolMessages = [...fullMessages, message]; // Add assistant's tool call request
-
-        for (const toolCall of message.tool_calls) {
-          const functionName = (toolCall as any).function.name;
-          const args = JSON.parse((toolCall as any).function.arguments);
-          let toolResult = '';
-
-          try {
-            if (functionName === 'get_user_devices') {
-              toolResult = await getUserDevices(userId);
-            } else if (functionName === 'get_device_location') {
-              toolResult = await getDeviceLocation(userId, args.deviceName);
-            } else if (functionName === 'get_visited_places') {
-              toolResult = await getVisitedPlaces(userId, args.limit);
-            }
-          } catch (e: any) {
-            toolResult = `Error executing ${functionName}: ${e.message}`;
-          }
-
-          toolMessages.push({
-            tool_call_id: toolCall.id,
-            role: 'tool',
-            name: functionName,
-            content: toolResult,
-          });
-        }
-
-        // Get final response after tool execution
-        const finalResponse = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
-          messages: toolMessages as any,
-        });
-
-        return finalResponse.choices[0].message;
-      }
-
-      return message;
-
-    } catch (error: any) {
-      console.error('AI Service Error:', error);
+    // Rate limit local
+    if (!checkRateLimit(_userId)) {
       return {
         role: 'assistant',
-        content: 'Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.'
+        content: 'Você atingiu o limite de mensagens por minuto. Por favor, aguarde um pouco.',
       };
     }
+
+    // Envia para a Edge Function (a chave OpenAI fica segura no servidor)
+    const { data, error } = await supabase.functions.invoke('ai-chat', {
+      body: { messages },
+    });
+
+    if (error) {
+      console.error('AIService: Edge Function error:', error);
+      throw new Error(error.message || 'Erro ao conectar com o assistente.');
+    }
+
+    return data;
   },
 };

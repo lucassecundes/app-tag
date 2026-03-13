@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Image } from 'react-native';
+import { PulsingDot } from '../../components/PulsingDot';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -89,6 +90,7 @@ export default function SharedLocationScreen() {
         centerCoordinate: [parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)],
         zoomLevel: 15,
         animationDuration: 1000,
+        pitch: 65,
       });
     }
   }, [device?.id]); // Apenas na primeira carga ou se o ID mudar
@@ -162,7 +164,7 @@ export default function SharedLocationScreen() {
         logoEnabled={false}
         attributionEnabled={false}
       >
-        <Camera ref={cameraRef} />
+        <Camera ref={cameraRef} defaultSettings={{ pitch: 65 }} />
 
         {trailGeoJSON && (
           <ShapeSource id="trailSource" shape={trailGeoJSON}>
@@ -195,6 +197,7 @@ export default function SharedLocationScreen() {
             coordinate={[parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)]}
           >
             <View style={styles.markerContainer}>
+              <PulsingDot color={Colors.primary} size={80} />
               <View style={styles.markerBubble}>
                 {device.imagem_url && !imageError ? (
                   <Image

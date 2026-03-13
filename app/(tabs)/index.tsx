@@ -153,8 +153,8 @@ export default function DeviceListScreen() {
           query = query.ilike('codigo', `%${targetTagCode}%`);
         }
       } else {
-        // Comportamento padrão: busca os dispositivos do próprio usuário
-        query = query.eq('usuario_id', user.id);
+        // Comportamento padrão: busca os dispositivos do próprio usuário + compartilhados
+        query = query.or(`usuario_id.eq.${user.id},usuarios_ids.cs.{"${user.id}"}`);
       }
 
       const { data, error } = await query;
@@ -231,13 +231,25 @@ export default function DeviceListScreen() {
   };
 
   const handleDevicePress = (device: any) => {
+    // Se o dispositivo ainda não possui posição válida, redireciona para a tela de conectando
+    if (!device.ultima_lat || !device.ultima_lng) {
+      router.push({
+        pathname: '/device-detail/connecting',
+        params: {
+          id: device.id,
+          nome: device.nome
+        }
+      });
+      return;
+    }
+
     router.push({
       pathname: '/device-detail/[id]',
       params: {
         id: device.id,
         nome: device.nome,
-        lat: device.ultima_lat || -23.550520,
-        lng: device.ultima_lng || -46.633308,
+        lat: device.ultima_lat,
+        lng: device.ultima_lng,
         address: device.endereco
       }
     });

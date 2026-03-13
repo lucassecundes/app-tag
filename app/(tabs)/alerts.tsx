@@ -21,20 +21,19 @@ export default function AlertsScreen() {
     if (!user) return;
 
     try {
-      // Busca notificações da tabela 'alertas' e faz join com 'tags' para obter o nome do dispositivo
+      // Busca notificações da tabela 'alertas' garantindo com !inner que a tag existe.
+      // E filtra para trazer apenas alertas de tags que pertencem ao usuário (dono) ou estão compartilhadas com ele.
       const { data, error } = await supabase
         .from('alertas')
         .select(`
           *,
-          tags (
-            nome
+          tags!inner (
+            nome,
+            usuario_id,
+            usuarios_ids
           )
         `)
-        // Se precisar filtrar por usuário, deve-se filtrar através da relação com tags
-        // .eq('tags.usuario_id', user.id) -> Isso requer RLS configurado corretamente ou filtro pós-query se a relação for complexa
-        // Assumindo que o RLS da tabela 'alertas' já filtra pelo usuário dono da tag (se configurado)
-        // Ou filtrando manualmente se o RLS permitir ver tudo (o que não deveria).
-        // Vamos confiar que o RLS de 'alertas' ou o filtro abaixo resolva.
+        .or(`usuario_id.eq.${user.id},usuarios_ids.cs.{"${user.id}"}`, { foreignTable: 'tags' })
         .order('data_hora', { ascending: false });
 
       if (error) {
@@ -85,7 +84,13 @@ export default function AlertsScreen() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'geofence': return <Shield size={24} color={Colors.primary} />;
+      case 'geofence':
+      case 'cerca':
+        return <Shield size={24} color={Colors.primary} />;
+      case 'geofence_saida':
+        return <Shield size={24} color={Colors.error} />;
+      case 'geofence_entrada':
+        return <Shield size={24} color={Colors.success} />;
       case 'movement': return <AlertTriangle size={24} color={Colors.warning} />;
       case 'disconnect': return <WifiOff size={24} color={Colors.textSecondary} />;
       case 'battery': return <Battery size={24} color={Colors.error} />;

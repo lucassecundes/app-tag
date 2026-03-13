@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { MapPin, ShieldAlert, Bell, Car, Bike, Truck, Bus, Package, Smartphone } from 'lucide-react-native';
+import { MapPin, ShieldAlert, Bell, Car, Bike, Truck, Bus, Package, Smartphone, BatteryFull, BatteryMedium, BatteryLow } from 'lucide-react-native';
 import { Colors } from '../constants/Colors';
 import { fetchAddressFromNominatim } from '../services/geocoding';
 
@@ -43,6 +43,15 @@ export const DeviceListItem = ({ item, onPress, timeAgo }: DeviceListItemProps) 
             default: return <Smartphone size={24} color={Colors.primary} />;
         }
     };
+
+    const getBatteryInfo = (level: number | null | undefined) => {
+        if (level === 3) return { icon: BatteryFull, color: Colors.success, label: 'Cheio', bg: 'rgba(0, 200, 81, 0.12)' };
+        if (level === 2) return { icon: BatteryMedium, color: Colors.warning, label: 'Médio', bg: 'rgba(255, 187, 51, 0.12)' };
+        if (level === 1) return { icon: BatteryLow, color: Colors.error, label: 'Baixo', bg: 'rgba(255, 68, 68, 0.12)' };
+        return null;
+    };
+
+    const batteryInfo = getBatteryInfo(item.battery);
 
     return (
         <TouchableOpacity
@@ -91,6 +100,11 @@ export const DeviceListItem = ({ item, onPress, timeAgo }: DeviceListItemProps) 
                                 <Bell size={16} color={Colors.warning} />
                             </View>
                         )}
+                    </View>
+                )}
+                {batteryInfo && (
+                    <View style={[styles.batteryBadge, { backgroundColor: batteryInfo.bg }]}>
+                        <batteryInfo.icon size={15} color={batteryInfo.color} />
                     </View>
                 )}
                 <View style={styles.actionIcon}>
@@ -181,5 +195,12 @@ const styles = StyleSheet.create({
         padding: 8,
         backgroundColor: 'rgba(255, 122, 0, 0.1)',
         borderRadius: 8,
+    },
+    batteryBadge: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

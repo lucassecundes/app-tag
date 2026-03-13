@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { MapView, Camera, PointAnnotation, MarkerView, StyleURL } from '../../components/ExternalMap';
-import { Car, Truck, Bike, Bus, Package, Smartphone, ArrowRight, Layers, Share2, ArrowLeft } from 'lucide-react-native';
+import { Car, Truck, Bike, Bus, Package, Smartphone, ArrowRight, Layers, Share2, ArrowLeft, BatteryFull, BatteryMedium, BatteryLow } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { fetchAddressFromNominatim } from '../../services/geocoding';
+import { PulsingDot } from '../../components/PulsingDot';
 
 export default function GlobalMapScreen() {
   const { user } = useAuth();
@@ -54,7 +55,7 @@ export default function GlobalMapScreen() {
         .order('ultima_comunicacao', { ascending: false });
 
       if (userData?.role !== 'admin') {
-        query = query.eq('usuario_id', user.id);
+        query = query.or(`usuario_id.eq.${user.id},usuarios_ids.cs.{"${user.id}"}`);
       }
 
       const { data, error } = await query;
@@ -115,6 +116,7 @@ export default function GlobalMapScreen() {
         centerCoordinate: [parseFloat(deviceList[0].ultima_lng), parseFloat(deviceList[0].ultima_lat)],
         zoomLevel: 14,
         animationDuration: 1000,
+        pitch: 65,
       });
       return;
     }
@@ -160,6 +162,13 @@ export default function GlobalMapScreen() {
     setMapStyle((prev: string) => prev === StyleURL.Dark ? StyleURL.SatelliteStreet : StyleURL.Dark);
   };
 
+  const getBatteryInfo = (level: number | null | undefined) => {
+    if (level === 3) return { icon: BatteryFull, color: Colors.success, label: 'Bateria cheia', bg: 'rgba(0, 200, 81, 0.12)' };
+    if (level === 2) return { icon: BatteryMedium, color: Colors.warning, label: 'Meia bateria', bg: 'rgba(255, 187, 51, 0.12)' };
+    if (level === 1) return { icon: BatteryLow, color: Colors.error, label: 'Bateria baixa', bg: 'rgba(255, 68, 68, 0.12)' };
+    return null;
+  };
+
   const handleMarkerPress = (device: any) => {
     setSelectedDevice(device);
     setSelectedDeviceAddress(device.endereco || 'Carregando endereço...');
@@ -177,6 +186,7 @@ export default function GlobalMapScreen() {
         centerCoordinate: [parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)],
         zoomLevel: 15,
         animationDuration: 500,
+        pitch: 65,
       });
     }
   };
@@ -206,7 +216,7 @@ export default function GlobalMapScreen() {
         scaleBarEnabled={false}
         onPress={() => setSelectedDevice(null)} // Deseleciona ao clicar no mapa
       >
-        <Camera ref={cameraRef} />
+        <Camera ref={cameraRef} defaultSettings={{ pitch: 65 }} />
 
         {devices.map(device => (
           <MarkerView
@@ -219,6 +229,7 @@ export default function GlobalMapScreen() {
               onPress={() => handleMarkerPress(device)}
               activeOpacity={0.8}
             >
+              <PulsingDot color={Colors.primary} size={80} />
               <View style={[
                 styles.markerBubble,
                 selectedDevice?.id === device.id && styles.markerSelected
@@ -285,6 +296,17 @@ export default function GlobalMapScreen() {
               <Text style={styles.deviceAddress} numberOfLines={1}>
                 {selectedDeviceAddress || 'Endereço não disponível'}
               </Text>
+              {(() => {
+                const b = getBatteryInfo(selectedDevice.battery);
+                return b ? (
+                  <View style={styles.batteryRow}>
+                    <View style={[styles.batteryBadge, { backgroundColor: b.bg }]}>
+                      <b.icon size={14} color={b.color} />
+                      <Text style={[styles.batteryLabel, { color: b.color }]}>{b.label}</Text>
+                    </View>
+                  </View>
+                ) : null;
+              })()}
             </View>
           </View>
 
@@ -484,6 +506,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Poppins_400Regular',
     color: Colors.textSecondary,
+  },
+  batteryRow: {
+    marginTop: 6,
+  },
+  batteryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    gap: 4,
+  },
+  batteryLabel: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
   },
   detailButton: {
     flex: 1,

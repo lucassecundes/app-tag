@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Dimensions, Alert, Platform } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown, ArrowLeft, Tag } from 'lucide-react-native';
@@ -6,11 +6,11 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { format, parseISO, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, router, useNavigation } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Button } from '../../components/ui/Button';
 
-import { MapView, Camera, ShapeSource, LineLayer, CircleLayer, StyleURL } from '../../components/ExternalMap';
+import { MapView, Camera, ShapeSource, LineLayer, CircleLayer, MarkerView, StyleURL } from '../../components/ExternalMap';
 
 const { height } = Dimensions.get('window');
 
@@ -18,6 +18,7 @@ type FilterType = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 
 export default function HistoryScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const params = useLocalSearchParams();
   const filterTagId = params.tagId as string;
 
@@ -29,6 +30,7 @@ export default function HistoryScreen() {
 
   // View Mode State
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   // Filter State
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -41,6 +43,24 @@ export default function HistoryScreen() {
   const [tempDateStart, setTempDateStart] = useState(new Date());
   const [tempDateEnd, setTempDateEnd] = useState(new Date());
 
+  useEffect(() => {
+    if (viewMode === 'map') {
+      navigation.setOptions({
+        tabBarStyle: { display: 'none' },
+      });
+    } else {
+      navigation.setOptions({
+        tabBarStyle: undefined,
+      });
+    }
+
+    return () => {
+      navigation.setOptions({
+        tabBarStyle: undefined,
+      });
+    };
+  }, [navigation, viewMode]);
+
   const cameraRef = useRef<any>(null);
 
   const fetchDevices = async () => {
@@ -49,7 +69,7 @@ export default function HistoryScreen() {
       const { data, error } = await supabase
         .from('tags')
         .select('*')
-        .eq('usuario_id', user.id)
+        .or(`usuario_id.eq.${user.id},usuarios_ids.cs.{"${user.id}"}`)
         .order('nome', { ascending: true });
 
       if (error) throw error;
@@ -305,9 +325,33 @@ export default function HistoryScreen() {
     }
   };
 
+  const handleSelectItem = (item: any) => {
+    if (item.latitude && item.longitude) {
+      setSelectedItem(item);
+      setViewMode('map');
+
+      setTimeout(() => {
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [item.longitude, item.latitude],
+            zoomLevel: 16,
+            animationDuration: 1000,
+            pitch: 65,
+          });
+        }
+      }, 500);
+    } else {
+      Alert.alert('Aviso', 'Este registro não possui coordenadas válidas.');
+    }
+  };
+
   // --- Renderers ---
   const renderItem = ({ item }: { item: any }) => (
-    <View style={styles.historyItem}>
+    <TouchableOpacity
+      style={styles.historyItem}
+      activeOpacity={0.7}
+      onPress={() => handleSelectItem(item)}
+    >
       <View style={styles.timelineContainer}>
         <View style={styles.timelineLine} />
         <View style={styles.timelineDot} />
@@ -328,7 +372,7 @@ export default function HistoryScreen() {
           </Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderDeviceItem = ({ item }: { item: any }) => (
@@ -353,14 +397,18 @@ export default function HistoryScreen() {
       {/* Header Fixo */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          {filterTagId && (
-            <TouchableOpacity
-              onPress={() => router.setParams({ tagId: '' })}
-              style={styles.backIcon}
-            >
-              <ArrowLeft size={24} color={Colors.text} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={() => {
+              if (filterTagId) {
+                router.setParams({ tagId: '' });
+              } else {
+                router.back();
+              }
+            }}
+            style={styles.backIcon}
+          >
+            <ArrowLeft size={24} color={Colors.text} />
+          </TouchableOpacity>
           <View>
             <Text style={styles.title}>{filterTagId ? 'Histórico' : 'Selecionar Veículo'}</Text>
             {filterTagId ? (
@@ -388,7 +436,10 @@ export default function HistoryScreen() {
 
             <TouchableOpacity
               style={[styles.iconButton, styles.primaryIconButton]}
-              onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+              onPress={() => {
+                if (viewMode === 'map') setSelectedItem(null);
+                setViewMode(viewMode === 'list' ? 'map' : 'list');
+              }}
             >
               {viewMode === 'list' ? (
                 <MapIcon size={20} color={Colors.white} />
@@ -456,6 +507,7 @@ export default function HistoryScreen() {
                   defaultSettings={{
                     centerCoordinate: initialCoords,
                     zoomLevel: 12,
+                    pitch: 65,
                   }}
                 />
 
@@ -482,12 +534,52 @@ export default function HistoryScreen() {
                     />
                   </ShapeSource>
                 )}
+
+                {selectedItem && (
+                  <MarkerView
+                    id="selected-marker"
+                    coordinate={[selectedItem.longitude, selectedItem.latitude]}
+                  >
+                    <View style={styles.selectedMarkerRoot}>
+                      <View style={styles.selectedMarkerBubble}>
+                        <MapPin size={20} color={Colors.white} />
+                      </View>
+                      <View style={styles.selectedMarkerArrow} />
+                    </View>
+                  </MarkerView>
+                )}
               </MapView>
-              <View style={styles.mapOverlay}>
-                <Text style={styles.mapOverlayText}>
-                  Exibindo {filteredHistory.length} pontos
-                </Text>
-              </View>
+              {!selectedItem && (
+                <View style={styles.mapOverlay}>
+                  <Text style={styles.mapOverlayText}>
+                    Exibindo {filteredHistory.length} pontos
+                  </Text>
+                </View>
+              )}
+
+              {selectedItem && (
+                <View style={styles.selectedPointCard}>
+                  <View style={styles.selectedPointHeader}>
+                    <View style={styles.selectedPointTimeRow}>
+                      <Clock size={16} color={Colors.primary} />
+                      <Text style={styles.selectedPointTime}>{formatTime(selectedItem.display_date)}</Text>
+                    </View>
+                    <Text style={styles.selectedPointDate}>{formatDate(selectedItem.display_date)}</Text>
+                  </View>
+                  <View style={styles.selectedPointAddressContainer}>
+                    <MapPin size={16} color={Colors.textSecondary} style={{ marginTop: 2, marginRight: 6 }} />
+                    <Text style={styles.selectedPointAddressText} numberOfLines={3}>
+                      {selectedItem.endereco || 'Endereço não identificado'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.closeSelectedBtn}
+                    onPress={() => setSelectedItem(null)}
+                  >
+                    <Text style={styles.closeSelectedBtnText}>Fechar Detalhes</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -820,6 +912,106 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontFamily: 'Poppins_500Medium',
     fontSize: 12,
+  },
+  selectedMarkerRoot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+    height: 60,
+    backgroundColor: 'transparent',
+  },
+  selectedMarkerBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+    zIndex: 2,
+  },
+  selectedMarkerArrow: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 0,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: Colors.white,
+    marginTop: -1,
+    zIndex: 1,
+  },
+  selectedPointCard: {
+    position: 'absolute',
+    bottom: 24,
+    left: 20,
+    right: 20,
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  selectedPointHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  selectedPointTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  selectedPointTime: {
+    color: Colors.primary,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 18,
+  },
+  selectedPointDate: {
+    color: Colors.textSecondary,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+  },
+  selectedPointAddressContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  selectedPointAddressText: {
+    color: Colors.text,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
+  },
+  closeSelectedBtn: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeSelectedBtnText: {
+    color: Colors.text,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
   },
 
   // Modal Styles

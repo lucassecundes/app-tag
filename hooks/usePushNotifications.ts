@@ -29,6 +29,14 @@ export function usePushNotifications() {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
       });
+      // Canal específico para notificações de admin (pedidos, carrinhos)
+      await Notifications.setNotificationChannelAsync('admin-notifications', {
+        name: 'Notificações Admin',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+        sound: 'default',
+      });
     }
 
     if (Device.isDevice) {

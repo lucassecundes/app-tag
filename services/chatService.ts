@@ -54,13 +54,15 @@ export const ChatService = {
   },
 
   async clearHistory(userId: string) {
+    // Nota: requer política RLS de DELETE em chat_history
+    // Ver migration: add_chat_history_delete_policy
     const { error } = await supabase
       .from('chat_history')
       .delete()
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error clearing history:', error);
+      console.error('Error clearing history (verifique a política RLS de DELETE):', error);
       throw error;
     }
   },

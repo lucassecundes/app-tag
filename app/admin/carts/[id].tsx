@@ -118,7 +118,8 @@ export default function AbandonedCartDetailScreen() {
     };
 
     const openPhone = (phone: string) => {
-        Linking.openURL(`tel:${phone}`);
+        const numericPhone = phone.replace(/\D/g, '');
+        Linking.openURL(`https://wa.me/${numericPhone}`);
     };
 
     const openEmail = (email: string) => {

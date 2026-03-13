@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { Mail, Lock, User, ArrowLeft, Tag, Phone } from 'lucide-react-native';
+import { Mail, Lock, User, ArrowLeft, Tag, Phone, CheckSquare, Square } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -18,6 +18,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleRegister = async () => {
     if (!name || !phone || !email || !password) {
@@ -25,8 +26,13 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (!acceptedTerms) {
+      Alert.alert('Atenção', 'Você precisa aceitar os Termos de Uso e Política de Privacidade para continuar.');
+      return;
+    }
+
     setLoading(true);
-    
+
     // 1. Criar usuário no Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -89,29 +95,29 @@ export default function RegisterScreen() {
         { text: 'OK', onPress: () => router.replace('/login') }
       ]);
     }
-    
+
     setLoading(false);
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Link href="/(auth)/scan-tag" asChild>
-            <Button 
-              title="" 
-              onPress={() => {}} 
-              variant="ghost" 
+            <Button
+              title=""
+              onPress={() => { }}
+              variant="ghost"
               icon={<ArrowLeft size={24} color={Colors.text} />}
               style={styles.backButton}
             />
           </Link>
           <View>
-             <Text style={styles.stepTitle}>Passo 2 de 2</Text>
-             <Text style={styles.title}>Criar Conta</Text>
+            <Text style={styles.stepTitle}>Passo 2 de 2</Text>
+            <Text style={styles.title}>Criar Conta</Text>
           </View>
         </View>
 
@@ -155,20 +161,33 @@ export default function RegisterScreen() {
             icon={<Lock size={20} color={Colors.textSecondary} />}
           />
 
-          <Text style={styles.termsText}>
-            Ao se cadastrar, você concorda com nossos{' '}
-            <Text style={styles.linkText} onPress={() => router.push('/(auth)/terms')}>
-              Termos de Uso
-            </Text>{' '}
-            e{' '}
-            <Text style={styles.linkText} onPress={() => router.push('/(auth)/privacy')}>
-              Política de Privacidade
-            </Text>.
-          </Text>
+          <View style={styles.termsContainer}>
+            <TouchableOpacity
+              style={styles.checkbox}
+              onPress={() => setAcceptedTerms(!acceptedTerms)}
+              activeOpacity={0.7}
+            >
+              {acceptedTerms ? (
+                <CheckSquare size={20} color={Colors.primary} />
+              ) : (
+                <Square size={20} color={Colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+            <Text style={styles.termsText}>
+              Li e concordo com os{' '}
+              <Text style={styles.linkText} onPress={() => router.push('/(auth)/terms')}>
+                Termos de Uso
+              </Text>{' '}
+              e{' '}
+              <Text style={styles.linkText} onPress={() => router.push('/(auth)/privacy')}>
+                Política de Privacidade
+              </Text>.
+            </Text>
+          </View>
 
-          <Button 
-            title="FINALIZAR CADASTRO" 
-            onPress={handleRegister} 
+          <Button
+            title="FINALIZAR CADASTRO"
+            onPress={handleRegister}
             loading={loading}
             style={styles.registerButton}
           />
@@ -229,11 +248,20 @@ const styles = StyleSheet.create({
   form: {
     width: '100%',
   },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    gap: 12,
+  },
+  checkbox: {
+    marginTop: 2,
+  },
   termsText: {
+    flex: 1,
     color: Colors.textSecondary,
     fontSize: 12,
     fontFamily: 'Poppins_400Regular',
-    marginBottom: 24,
     lineHeight: 20,
   },
   linkText: {

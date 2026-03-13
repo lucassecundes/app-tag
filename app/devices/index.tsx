@@ -25,7 +25,7 @@ export default function MyDevicesScreen() {
       const { data, error } = await supabase
         .from('tags')
         .select('*')
-        .eq('usuario_id', user.id);
+        .or(`usuario_id.eq.${user.id},usuarios_ids.cs.{"${user.id}"}`);
 
       if (error) {
         console.error('Erro Supabase Gerenciador:', error);
@@ -59,8 +59,8 @@ export default function MyDevicesScreen() {
       'Tem certeza que deseja desvincular esta TAG? O histórico será mantido.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Excluir', 
+        {
+          text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -68,7 +68,7 @@ export default function MyDevicesScreen() {
                 .from('tags')
                 .delete()
                 .eq('id', id);
-              
+
               if (error) throw error;
               fetchDevices();
             } catch (e: any) {
@@ -99,8 +99,8 @@ export default function MyDevicesScreen() {
     <View style={styles.card}>
       <View style={styles.cardIcon}>
         {item.imagem_url && !imageErrors[item.id] ? (
-          <Image 
-            source={{ uri: item.imagem_url }} 
+          <Image
+            source={{ uri: item.imagem_url }}
             style={styles.deviceImage}
             resizeMode="cover"
             onError={() => {
@@ -135,7 +135,7 @@ export default function MyDevicesScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={Colors.text} />
@@ -172,8 +172,8 @@ export default function MyDevicesScreen() {
               <Text style={styles.emptyText}>
                 Você ainda não possui nenhuma TAGPRO+ vinculada à sua conta.
               </Text>
-              <Button 
-                title="Vincular Agora" 
+              <Button
+                title="Vincular Agora"
                 onPress={() => router.push('/devices/add')}
                 style={{ marginTop: 24, width: '100%' }}
               />
@@ -183,8 +183,8 @@ export default function MyDevicesScreen() {
       )}
 
       {devices.length > 0 && (
-        <TouchableOpacity 
-          style={styles.fab} 
+        <TouchableOpacity
+          style={styles.fab}
           onPress={() => router.push('/devices/add')}
           activeOpacity={0.8}
         >
