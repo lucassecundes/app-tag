@@ -12,6 +12,10 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, run
 import { usePremium } from '../../context/PremiumContext';
 import { useAuth } from '../../context/AuthContext';
 
+import { bluetoothService } from '../../services/bluetooth/bluetoothService';
+import { locationService } from '../../services/bluetooth/locationService';
+import { trackingService } from '../../services/bluetooth/trackingService';
+
 import { translateSupabaseError } from '../../lib/errorTranslator';
 import { Image } from 'react-native';
 import { fetchAddressFromNominatim } from '../../services/geocoding';
@@ -75,6 +79,7 @@ export default function DeviceDetailScreen() {
   const [address, setAddress] = useState(params.address as string || 'Carregando endereço...');
   const [lastUpdate, setLastUpdate] = useState(new Date().toISOString());
   const [simulating, setSimulating] = useState(false);
+  const [macAddress, setMacAddress] = useState(params.mac as string | undefined);
 
   // Estados dos Alertas
   const [alertaCerca, setAlertaCerca] = useState(false);
@@ -188,6 +193,29 @@ export default function DeviceDetailScreen() {
     };
   }, [id]);
 
+  useEffect(() => {
+    // Buscar focado via Bluetooth ao abrir o mapa
+    if (Platform.OS === 'android' && macAddress && macAddress !== '0' && id && user) {
+      bluetoothService.scanForMac(macAddress, async (device) => {
+        console.log(`[DeviceDetail] MAC ${macAddress} encontrado via scan focado!`);
+        
+        const loc = await locationService.getCurrentLocation();
+        if (loc) {
+          const tagMock = { id: id as string, mac: macAddress, usuario_id: user.id } as any;
+          await trackingService.updateTagLocation(tagMock, loc.latitude, loc.longitude, null);
+          
+          // O Realtime listener do componente vai detectar a atualização do Supabase e mover o pino no mapa
+        }
+      });
+    }
+
+    return () => {
+      if (Platform.OS === 'android' && macAddress && macAddress !== '0') {
+        bluetoothService.stopScan();
+      }
+    };
+  }, [macAddress, id, user]);
+
   const updateScreenData = (data: any) => {
     if (data.nome) setNome(data.nome);
     if (data.icone) setType(data.icone);
@@ -214,6 +242,7 @@ export default function DeviceDetailScreen() {
     if (data.endereco) setAddress(data.endereco);
     if (data.ultima_comunicacao) setLastUpdate(data.ultima_comunicacao);
     if (data.battery !== undefined) setBattery(data.battery);
+    if (data.mac && data.mac !== '0' && data.mac !== macAddress) setMacAddress(data.mac);
   };
 
   const fenceGeoJSON = useMemo(() => {
@@ -605,7 +634,12 @@ export default function DeviceDetailScreen() {
                 </View>
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Status</Text>
-                  <Text style={[styles.statValue, { color: Colors.success }]}>Conectado</Text>
+                  {(() => {
+                    const isActive = lastUpdate && (new Date().getTime() - new Date(lastUpdate).getTime()) < 24 * 60 * 60 * 1000;
+                    return (
+                      <Text style={[styles.statValue, { color: isActive ? Colors.success : Colors.error }]}>{isActive ? 'Online' : 'Offline'}</Text>
+                    );
+                  })()}
                 </View>
                 {batteryInfo && (
                   <View style={styles.statItem}>

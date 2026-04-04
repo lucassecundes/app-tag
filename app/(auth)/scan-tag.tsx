@@ -45,13 +45,26 @@ export default function ScanTagScreen() {
   }, [mode]);
 
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+    // Se já escaneou e a tela ainda está exibindo o alert, não faz nada para não encavalar alertas
+    if (scanned) return;
+
     setScanned(true);
     setTagId(data);
-    setMode('manual');
-    Alert.alert('TAG Detectada', `Código: ${data}`, [
-      { text: 'Confirmar', onPress: () => proceedToRegister(data) },
-      { text: 'Escanear Novamente', onPress: () => setScanned(false) }
-    ]);
+    
+    // Pequeno timeout para evitar múltiplos alertas rápidos na thread nativa do iOS
+    setTimeout(() => {
+      Alert.alert('TAG Detectada', `Código: ${data}`, [
+        { text: 'Escanear Novamente', onPress: () => {
+          setTagId('');
+          // Timeout para garantir que a UI limpe antes de reativar a câmera
+          setTimeout(() => setScanned(false), 500);
+        }, style: 'cancel' },
+        { text: 'Confirmar', onPress: () => {
+          setMode('manual');
+          proceedToRegister(data);
+        } }
+      ]);
+    }, 100);
   };
 
   const proceedToRegister = (id: string) => {
@@ -140,7 +153,7 @@ export default function ScanTagScreen() {
         <View style={styles.form}>
           <Input
             label="ID da TAG"
-            placeholder="Digite o código (Ex: TAG-123)"
+            placeholder="Digite o código (Ex: 1234567890)"
             value={tagId}
             onChangeText={setTagId}
             autoCapitalize="characters"

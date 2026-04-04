@@ -116,10 +116,15 @@ export default function MyDevicesScreen() {
         {/* Alterado de item.name para item.nome */}
         <Text style={styles.cardTitle}>{item.nome || 'Dispositivo sem nome'}</Text>
         <Text style={styles.cardSubtitle}>ID: {item.codigo || item.id?.substring(0, 8)}</Text>
-        <View style={styles.statusBadge}>
-          <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
-          <Text style={styles.statusText}>Ativo</Text>
-        </View>
+        {(() => {
+          const isActive = item.ultima_comunicacao && (new Date().getTime() - new Date(item.ultima_comunicacao).getTime()) < 24 * 60 * 60 * 1000;
+          return (
+            <View style={styles.statusBadge}>
+              <View style={[styles.statusDot, { backgroundColor: isActive ? Colors.success : Colors.error }]} />
+              <Text style={styles.statusText}>{isActive ? 'Online' : 'Offline'}</Text>
+            </View>
+          );
+        })()}
       </View>
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => handleEdit(item.id)} style={styles.actionButton}>

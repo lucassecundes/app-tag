@@ -74,14 +74,20 @@ export default function AddDeviceScreen() {
 
     setLoading(true);
     try {
-      const payload = {
+      const cleanTagId = tagId.trim();
+      const payload: any = {
         usuario_id: user.id,
         // Alterado de name para nome
         nome: deviceName.trim(),
-        codigo: tagId.trim(),
+        codigo: cleanTagId,
         icone: 'car',
         created_at: new Date().toISOString(),
       };
+
+      // Se o ID tiver 12 caracteres hexadecimais, formata e adiciona no campo mac
+      if (/^[0-9A-Fa-f]{12}$/.test(cleanTagId)) {
+        payload.mac = cleanTagId.match(/.{1,2}/g)?.join(':').toUpperCase();
+      }
 
       console.log('Enviando payload para Supabase:', payload);
 
@@ -185,7 +191,7 @@ export default function AddDeviceScreen() {
 
             <Input
               label="ID da TAG / Serial"
-              placeholder="Ex: TAG-123456"
+              placeholder="Ex: 1234567890"
               value={tagId}
               onChangeText={setTagId}
               autoCapitalize="characters"

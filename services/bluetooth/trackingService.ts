@@ -1,21 +1,25 @@
 import { supabase } from '../../lib/supabase';
 import { TagWithMac } from './tagsService';
 import { fetchAddressFromNominatim } from '../geocoding';
+import { AppState } from 'react-native';
 
 // Cache para cooldown (Tag ID -> Timestamp de última atualização local)
 const updateCache: Record<string, number> = {};
-const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos
 
 export const trackingService = {
   /**
-   * Verifica se pode atualizar a tag (cooldown de 5 minutos).
+   * Verifica se pode atualizar a tag.
+   * Cooldown de 5 minutos com app aberto e 10 minutos em segundo plano.
    */
   canUpdateTag(tagId: string): boolean {
     const lastUpdate = updateCache[tagId];
     if (!lastUpdate) return true;
 
     const now = Date.now();
-    return (now - lastUpdate) > COOLDOWN_MS;
+    const isBackground = AppState.currentState.match(/inactive|background/);
+    const cooldownMs = isBackground ? (10 * 60 * 1000) : (5 * 60 * 1000);
+
+    return (now - lastUpdate) > cooldownMs;
   },
 
   /**

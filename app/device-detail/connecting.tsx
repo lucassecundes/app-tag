@@ -8,10 +8,16 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
+  Platform
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
+
+import { bluetoothService } from '../../services/bluetooth/bluetoothService';
+import { locationService } from '../../services/bluetooth/locationService';
+import { trackingService } from '../../services/bluetooth/trackingService';
+import { useAuth } from '../../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const ORBIT_SIZE_OUTER = width * 0.72;
@@ -20,7 +26,8 @@ const CORE_SIZE = width * 0.28;
 const DOT_SIZE = 14;
 
 export default function ConnectingScreen() {
-  const { nome } = useLocalSearchParams<{ nome?: string }>();
+  const { id, nome, mac } = useLocalSearchParams<{ id?: string, nome?: string, mac?: string }>();
+  const { user } = useAuth();
 
   // Glow / pulse da esfera central
   const pulseAnim = useRef(new Animated.Value(0.7)).current;
@@ -86,7 +93,42 @@ export default function ConnectingScreen() {
         useNativeDriver: true,
       })
     ).start();
-  }, []);
+
+    // Lógica de busca Bluetooth focada neste MAC
+    if (Platform.OS === 'android' && mac && mac !== '0' && id && user) {
+      bluetoothService.scanForMac(mac, async (device) => {
+        console.log(`[ConnectingScreen] MAC ${mac} encontrado! Capturando localização...`);
+        
+        const loc = await locationService.getCurrentLocation();
+        if (loc) {
+          // Atualizar o Supabase usando o trackingService
+          // Ele cria um mock de TagWithMac para atender a tipagem
+          const tagMock = { id, mac, usuario_id: user.id } as any;
+          await trackingService.updateTagLocation(tagMock, loc.latitude, loc.longitude, null);
+          
+          // O Realtime (caso estivesse na tela de detalhes) ou uma atualização faria navegar
+          // Mas como estamos no connecting, podemos navegar para o detalhe direto:
+          router.replace({
+            pathname: '/device-detail/[id]',
+            params: {
+              id,
+              nome,
+              mac,
+              lat: loc.latitude.toString(),
+              lng: loc.longitude.toString()
+            }
+          });
+        }
+      });
+    }
+
+    return () => {
+      // Parar o scan ao sair da tela
+      if (Platform.OS === 'android' && mac && mac !== '0') {
+        bluetoothService.stopScan();
+      }
+    };
+  }, [mac, id, user, nome]);
 
   const outerSpin = outerRotation.interpolate({
     inputRange: [0, 1],
@@ -211,7 +253,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 24,
     paddingBottom: 16,
   },
   backButton: {
@@ -236,10 +278,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
     paddingBottom: 40,
+    paddingTop: 20,
   },
   topTextContainer: {
     alignItems: 'center',
     marginBottom: 52,
+    marginTop: 20,
   },
   mainTitle: {
     fontSize: 22,

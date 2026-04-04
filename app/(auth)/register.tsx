@@ -74,16 +74,23 @@ export default function RegisterScreen() {
 
       // 3. Vincular a TAG ao novo usuário na tabela 'tags'
       if (tagId) {
+        const payload: any = {
+          usuario_id: authData.user.id,
+          // Alterado de name para nome
+          nome: `TAG ${tagId}`,
+          codigo: tagId,
+          icone: 'car',
+          created_at: new Date().toISOString(),
+        };
+
+        // Se o ID tiver 12 caracteres hexadecimais, formata e adiciona no campo mac
+        if (/^[0-9A-Fa-f]{12}$/.test(tagId)) {
+          payload.mac = tagId.match(/.{1,2}/g)?.join(':').toUpperCase();
+        }
+
         const { error: deviceError } = await supabase
           .from('tags')
-          .insert({
-            usuario_id: authData.user.id,
-            // Alterado de name para nome
-            nome: `TAG ${tagId}`,
-            codigo: tagId,
-            icone: 'car',
-            created_at: new Date().toISOString(),
-          });
+          .insert(payload);
 
         if (deviceError) {
           console.log('Erro ao vincular tag:', deviceError);

@@ -89,8 +89,8 @@ export function useBluetoothTracker() {
         console.log('[useBluetoothTracker] App foi para Foreground. Retomando fluxo...');
         checkAndStartScan();
       } else if (nextAppState.match(/inactive|background/)) {
-        console.log('[useBluetoothTracker] App foi para Background. Parando scan automaticamente.');
-        stopScan();
+        console.log('[useBluetoothTracker] App foi para Background. O scan continuará rodando (10 min cooldown).');
+        // Não chamamos stopScan() aqui para permitir busca em segundo plano
       }
       appState.current = nextAppState;
     });
@@ -115,6 +115,16 @@ async function requestPermissions(): Promise<boolean> {
     if (locPerm.status !== 'granted') {
       console.warn('[useBluetoothTracker] Permissão de localização não concedida pelo usuário.');
       return false;
+    }
+
+    // Pedir também localização em background, mas não bloquear caso não seja dado (Android > 10)
+    try {
+      const bgLocPerm = await Location.requestBackgroundPermissionsAsync();
+      if (bgLocPerm.status !== 'granted') {
+        console.warn('[useBluetoothTracker] Permissão de localização em background não concedida. O scan pode ser morto pelo SO.');
+      }
+    } catch (e) {
+      console.log('Não foi possível pedir permissão de background:', e);
     }
 
     // Bluetooth (React Native / Android nativo)

@@ -1,11 +1,14 @@
 import { BleManager, Device } from 'react-native-ble-plx';
+import { Platform } from 'react-native';
 
 class BluetoothService {
   private manager: BleManager | null = null;
   private isScanning = false;
 
   constructor() {
-    this.manager = new BleManager();
+    if (Platform.OS === 'android') {
+      this.manager = new BleManager();
+    }
   }
 
   /**
@@ -36,8 +39,35 @@ class BluetoothService {
   }
 
   /**
-   * Para o scan Bluetooth.
+   * Inicia o scan buscando um MAC específico.
    */
+  scanForMac(targetMac: string, onDeviceFound: (device: Device) => void) {
+    if (!this.manager) return;
+
+    // Se já estiver escaneando algo, paramos para iniciar o foco
+    if (this.isScanning) {
+      this.stopScan();
+    }
+
+    console.log(`[bluetoothService] Iniciando scan focado no MAC: ${targetMac}...`);
+    this.isScanning = true;
+
+    this.manager.startDeviceScan(
+      null, 
+      { allowDuplicates: true }, // allowDuplicates ajuda a encontrar mais rápido estando na tela
+      (error, device) => {
+        if (error) {
+          console.error('[bluetoothService] Erro no scan focado:', error);
+          this.stopScan();
+          return;
+        }
+
+        if (device && device.id === targetMac) {
+          onDeviceFound(device);
+        }
+      }
+    );
+  }
   stopScan() {
     if (!this.isScanning || !this.manager) return;
 

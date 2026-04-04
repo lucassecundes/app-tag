@@ -9,7 +9,6 @@ export interface TagWithMac {
   ultima_lng: number | null;
   ultima_comunicacao: string | null;
   endereco: string | null;
-  status: string | null;
   battery: number | null;
 }
 

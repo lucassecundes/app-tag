@@ -81,7 +81,12 @@ export const DeviceListItem = ({ item, onPress, timeAgo }: DeviceListItemProps) 
                     {timeAgo && <Text style={{ color: Colors.primary }}> • {timeAgo}</Text>}
                 </Text>
                 <View style={styles.statusRow}>
-                    <View style={[styles.statusDot, { backgroundColor: item.ultima_lat ? Colors.success : Colors.warning }]} />
+                    {(() => {
+                        const isActive = item.ultima_comunicacao && (new Date().getTime() - new Date(item.ultima_comunicacao).getTime()) < 24 * 60 * 60 * 1000;
+                        return (
+                            <View style={[styles.statusDot, { backgroundColor: isActive ? Colors.success : Colors.error }]} />
+                        );
+                    })()}
                     <Text style={styles.statusText} numberOfLines={1}>
                         {address}
                     </Text>

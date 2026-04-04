@@ -198,6 +198,7 @@ export default function GlobalMapScreen() {
         params: {
           id: selectedDevice.id,
           nome: selectedDevice.nome,
+          mac: selectedDevice.mac,
           lat: selectedDevice.ultima_lat,
           lng: selectedDevice.ultima_lng,
           address: selectedDeviceAddress

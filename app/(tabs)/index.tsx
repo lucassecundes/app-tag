@@ -237,7 +237,8 @@ export default function DeviceListScreen() {
         pathname: '/device-detail/connecting',
         params: {
           id: device.id,
-          nome: device.nome
+          nome: device.nome,
+          mac: device.mac
         }
       });
       return;
@@ -248,6 +249,7 @@ export default function DeviceListScreen() {
       params: {
         id: device.id,
         nome: device.nome,
+        mac: device.mac,
         lat: device.ultima_lat,
         lng: device.ultima_lng,
         address: device.endereco
@@ -387,7 +389,7 @@ export default function DeviceListScreen() {
 
             <Text style={styles.modalLabel}>Ou Pesquisar por Código (TAG)</Text>
             <Input
-              placeholder="Ex: TAG-123456"
+              placeholder="Ex: 1234567890"
               value={targetTagCode}
               onChangeText={(text) => {
                 setTargetTagCode(text);
