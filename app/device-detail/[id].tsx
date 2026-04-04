@@ -90,6 +90,7 @@ export default function DeviceDetailScreen() {
 
   // Battery
   const [battery, setBattery] = useState<number | null | undefined>(null);
+  const hasSearchedOnce = useRef(false);
 
   // Schedule Modal State
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -194,10 +195,16 @@ export default function DeviceDetailScreen() {
   }, [id]);
 
   useEffect(() => {
-    // Buscar focado via Bluetooth ao abrir o mapa
-    if (Platform.OS === 'android' && macAddress && macAddress !== '0' && id && user) {
+    // Buscar focado via Bluetooth ao abrir o mapa - APENAS UMA VEZ
+    if (Platform.OS === 'android' && macAddress && macAddress !== '0' && id && user && !hasSearchedOnce.current) {
+      hasSearchedOnce.current = true;
+      console.log(`[DeviceDetail] Iniciando scan focado único para o MAC: ${macAddress}`);
+
       bluetoothService.scanForMac(macAddress, async (device) => {
-        console.log(`[DeviceDetail] MAC ${macAddress} encontrado via scan focado!`);
+        console.log(`[DeviceDetail] MAC ${macAddress} encontrado via scan focado único! Parando scan.`);
+        
+        // Para o scan imediatamente após encontrar uma vez
+        bluetoothService.stopScan();
         
         const loc = await locationService.getCurrentLocation();
         if (loc) {
@@ -210,6 +217,7 @@ export default function DeviceDetailScreen() {
     }
 
     return () => {
+      // Garante que o scan pare se o usuário sair da tela antes de encontrar
       if (Platform.OS === 'android' && macAddress && macAddress !== '0') {
         bluetoothService.stopScan();
       }

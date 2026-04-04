@@ -235,7 +235,7 @@ export default function ChatScreen() {
 
           <View style={[
             styles.inputContainer,
-            { paddingBottom: Math.max(insets.bottom, 16) }
+            { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 28 : 24) }
           ]}>
             <TextInput
               style={styles.input}
