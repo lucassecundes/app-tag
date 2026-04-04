@@ -52,7 +52,7 @@ const WelcomeView = () => (
     <View style={styles.welcomeIconContainer}>
       <Bot size={48} color={Colors.white} />
     </View>
-    <Text style={styles.welcomeTitle}>Bem-vindo a TAGPRO+ IA</Text>
+    <Text style={styles.welcomeTitle}>Bem-vindo a TAG+ IA</Text>
     <Text style={styles.welcomeSubtitle}>
       Sou seu assistente inteligente. Como posso ajudar você a monitorar seus dispositivos hoje?
     </Text>

@@ -4,24 +4,24 @@ import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 
-const TERMS_CONTENT = `TERMO DE ADESÃO E ISENÇÃO DE RESPONSABILIDADE – TAGPRO+ / BESAT RASTREAMENTO
+const TERMS_CONTENT = `TERMO DE ADESÃO E ISENÇÃO DE RESPONSABILIDADE – TAG+ / BESAT RASTREAMENTO
 
-Este Termo estabelece as condições de uso do serviço TAGPRO+ e deve ser lido atentamente pelo CLIENTE.
+Este Termo estabelece as condições de uso do serviço TAG+ e deve ser lido atentamente pelo CLIENTE.
 
 Ao prosseguir com o cadastro e marcar a opção “Li e aceito os termos”, o CLIENTE declara que leu, entendeu e concorda com as cláusulas abaixo, aderindo ao presente Termo de forma livre, informada e inequívoca, conforme previsto na legislação brasileira.
 
 1. OBJETO
 
-O presente Termo tem por objeto formalizar a adesão do CLIENTE ao uso do dispositivo de rastreamento TAGPRO+, fornecido pela empresa BESAT SOLUÇÕES EM RASTREAMENTO LTDA, inscrita no CNPJ nº 32.198.464/0001-40, com sede na cidade de Campo Grande/MS.
+O presente Termo tem por objeto formalizar a adesão do CLIENTE ao uso do dispositivo de rastreamento TAG+, fornecido pela empresa BESAT SOLUÇÕES EM RASTREAMENTO LTDA, inscrita no CNPJ nº 32.198.464/0001-40, com sede na cidade de Campo Grande/MS.
 
-A TAGPRO+ é um equipamento eletrônico que utiliza tecnologia GPS e rede móvel (GSM/GPRS/4G) para localizar e monitorar veículos, objetos e bens móveis, disponibilizando essas informações por meio de aplicativo e/ou plataforma digital.
+A TAG+ é um equipamento eletrônico que utiliza tecnologia GPS e rede móvel (GSM/GPRS/4G) para localizar e monitorar veículos, objetos e bens móveis, disponibilizando essas informações por meio de aplicativo e/ou plataforma digital.
 
 2. NATUREZA DO SERVIÇO
 
 O CLIENTE reconhece que:
 
 - O serviço prestado pela BESAT possui natureza exclusivamente informativa e tecnológica, limitado ao fornecimento de dados de geolocalização;
-- O dispositivo TAGPRO+ não substitui sistemas de segurança convencionais, não constitui seguro veicular ou patrimonial e não garante a recuperação de bens em caso de furto, roubo ou sinistro;
+- O dispositivo TAG+ não substitui sistemas de segurança convencionais, não constitui seguro veicular ou patrimonial e não garante a recuperação de bens em caso de furto, roubo ou sinistro;
 - O correto funcionamento do serviço está condicionado à cobertura de sinal de GPS e rede móvel.
 
 3. ISENÇÃO DE RESPONSABILIDADE
@@ -33,7 +33,7 @@ A BESAT não se responsabiliza, em nenhuma hipótese, por:
 - Inconsistências, atrasos ou interrupções na transmissão dos dados;
 - Ações policiais ou judiciais relacionadas à recuperação de veículos.
 
-O CLIENTE reconhece que o dispositivo TAGPRO+ é ferramenta auxiliar, devendo ser utilizado em conjunto com outras medidas de segurança.
+O CLIENTE reconhece que o dispositivo TAG+ é ferramenta auxiliar, devendo ser utilizado em conjunto com outras medidas de segurança.
 
 4. RESPONSABILIDADE DO CLIENTE
 
@@ -46,7 +46,7 @@ Constituem obrigações do CLIENTE:
 
 5. GARANTIA
 
-O equipamento TAGPRO+ possui garantia legal de 14 (quatorze) dias a partir do recebimento, limitada a defeitos de fabricação.
+O equipamento TAG+ possui garantia legal de 14 (quatorze) dias a partir do recebimento, limitada a defeitos de fabricação.
 
 Ficam excluídos da garantia:
 

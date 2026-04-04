@@ -34,7 +34,7 @@ export function AppUpdateModal({ visible, onUpdate, forceUpdate }: AppUpdateModa
                     <Text style={styles.title}>Nova versão disponível!</Text>
 
                     <Text style={styles.message}>
-                        Uma nova versão do Tagpro está disponível com melhorias e correções importantes.
+                        Uma nova versão do TAG+ está disponível com melhorias e correções importantes.
                         {forceUpdate ? ' É necessário atualizar para continuar usando o aplicativo.' : ' Recomendamos atualizar para garantir a melhor experiência.'}
                     </Text>
 

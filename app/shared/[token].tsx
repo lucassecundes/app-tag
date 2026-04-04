@@ -266,7 +266,7 @@ export default function SharedLocationScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Compartilhado via Tagpro+</Text>
+          <Text style={styles.footerText}>Compartilhado via TAG+</Text>
         </View>
       </View>
     </View>

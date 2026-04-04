@@ -94,7 +94,7 @@ export default function ScanTagScreen() {
 
       <Text style={styles.mainTitle}>Vincule sua TAG</Text>
       <Text style={styles.subtitle}>
-        Para criar sua conta, primeiro precisamos identificar seu dispositivo TAGPRO+.
+        Para criar sua conta, primeiro precisamos identificar seu dispositivo TAG+.
       </Text>
 
       <View style={styles.tabs}>

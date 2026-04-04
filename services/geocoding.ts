@@ -13,7 +13,7 @@ export async function fetchAddressFromNominatim(lat: number, lng: number): Promi
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
         const response = await fetch(url, {
             headers: {
-                'User-Agent': 'TagPro-App-Nativo',
+                'User-Agent': 'TAG-App-Nativo',
             }
         });
 

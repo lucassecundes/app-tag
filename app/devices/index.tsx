@@ -170,7 +170,7 @@ export default function MyDevicesScreen() {
               </View>
               <Text style={styles.emptyTitle}>Nenhum dispositivo</Text>
               <Text style={styles.emptyText}>
-                Você ainda não possui nenhuma TAGPRO+ vinculada à sua conta.
+                Você ainda não possui nenhuma TAG+ vinculada à sua conta.
               </Text>
               <Button
                 title="Vincular Agora"

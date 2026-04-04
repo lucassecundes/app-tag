@@ -42,7 +42,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>TAGPRO<Text style={styles.logoPlus}>+</Text></Text>
+            <Text style={styles.logoText}>TAG<Text style={styles.logoPlus}>+</Text></Text>
             <Text style={styles.tagline}>Tecnologia invisível. Segurança imbatível.</Text>
           </View>
         </View>

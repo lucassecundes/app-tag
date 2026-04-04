@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Dimensions, Alert, Platform } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown, ArrowLeft, Tag } from 'lucide-react-native';
+import { MapPin, Clock, Filter, Map as MapIcon, List, X, Calendar, ChevronDown, ArrowLeft, Tag, Layers } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { format, parseISO, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
@@ -31,6 +31,8 @@ export default function HistoryScreen() {
   // View Mode State
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [mapStyle, setMapStyle] = useState<string>(StyleURL.Dark);
+  const [is3D, setIs3D] = useState(true);
 
   // Filter State
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -44,7 +46,7 @@ export default function HistoryScreen() {
   const [tempDateEnd, setTempDateEnd] = useState(new Date());
 
   useEffect(() => {
-    if (viewMode === 'map') {
+    if (filterTagId) {
       navigation.setOptions({
         tabBarStyle: { display: 'none' },
       });
@@ -59,9 +61,26 @@ export default function HistoryScreen() {
         tabBarStyle: undefined,
       });
     };
-  }, [navigation, viewMode]);
+  }, [navigation, filterTagId]);
 
   const cameraRef = useRef<any>(null);
+
+  const toggleMapStyle = () => {
+    setMapStyle((prev) => prev === StyleURL.Dark ? StyleURL.SatelliteStreet : StyleURL.Dark);
+  };
+
+  const toggle3D = () => {
+    setIs3D(!is3D);
+  };
+
+  useEffect(() => {
+    if (cameraRef.current && viewMode === 'map') {
+      cameraRef.current.setCamera({
+        pitch: is3D ? 65 : 0,
+        animationDuration: 500,
+      });
+    }
+  }, [is3D, viewMode]);
 
   const fetchDevices = async () => {
     if (!user) return;
@@ -336,7 +355,7 @@ export default function HistoryScreen() {
             centerCoordinate: [item.longitude, item.latitude],
             zoomLevel: 16,
             animationDuration: 1000,
-            pitch: 65,
+            pitch: is3D ? 65 : 0,
           });
         }
       }, 500);
@@ -500,14 +519,14 @@ export default function HistoryScreen() {
             <View style={styles.mapContainer}>
               <MapView
                 style={styles.map}
-                styleURL={StyleURL.Dark}
+                styleURL={mapStyle}
               >
                 <Camera
                   ref={cameraRef}
                   defaultSettings={{
                     centerCoordinate: initialCoords,
                     zoomLevel: 12,
-                    pitch: 65,
+                    pitch: is3D ? 65 : 0,
                   }}
                 />
 
@@ -549,6 +568,16 @@ export default function HistoryScreen() {
                   </MarkerView>
                 )}
               </MapView>
+
+              <View style={styles.mapControls}>
+                <TouchableOpacity style={styles.mapControlButton} onPress={toggleMapStyle}>
+                  <Layers size={20} color={Colors.text} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.mapControlButton} onPress={toggle3D}>
+                  <Text style={styles.mapControlText}>{is3D ? '2D' : '3D'}</Text>
+                </TouchableOpacity>
+              </View>
+
               {!selectedItem && (
                 <View style={styles.mapOverlay}>
                   <Text style={styles.mapOverlayText}>
@@ -898,6 +927,32 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  mapControls: {
+    position: 'absolute',
+    top: 24,
+    right: 16,
+    gap: 12,
+  },
+  mapControlButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  mapControlText: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 14,
+    color: Colors.text,
   },
   mapOverlay: {
     position: 'absolute',

@@ -1,0 +1,268 @@
+Analise a estrutura atual do app TAG+ e implemente uma nova funcionalidade de detecção Bluetooth integrada ao Supabase, utilizando o campo `mac` da tabela `public.tags`.
+
+IMPORTANTE (REGRAS CRÍTICAS):
+- NÃO rodar em segundo plano
+- NÃO iniciar scan Bluetooth sem necessidade
+- SOMENTE executar a busca quando o app estiver aberto (foreground)
+- SEMPRE consultar o banco antes de iniciar qualquer scan
+- Se não houver MAC cadastrado, NÃO FAZER NADA (ignorar silenciosamente)
+
+--------------------------------------------------
+📦 ESTRUTURA REAL DO BANCO
+--------------------------------------------------
+
+Tabela: public.tags
+
+Campos relevantes:
+- id (uuid)
+- usuario_id (uuid)
+- codigo (text)
+- ultima_lat (double precision)
+- ultima_lng (double precision)
+- ultima_comunicacao (timestamp with time zone)
+- endereco (text)
+- status (text)
+- battery (smallint)
+- delet (boolean)
+
+Nova coluna a ser criada:
+- mac (text, nullable)
+
+--------------------------------------------------
+
+Tabela: public.historico_tags
+
+Campos:
+- id (uuid)
+- tag_id (uuid)
+- latitude (double precision)
+- longitude (double precision)
+- data_hora (timestamp with time zone)
+- endereco (text)
+- battery (smallint)
+
+--------------------------------------------------
+
+Triggers existentes (NÃO QUEBRAR):
+- tags:
+  - tr_enforce_ultima_comunicacao
+  - função: enforce_ultima_comunicacao_progress()
+
+- historico_tags:
+  - trigger_check_alerts
+  - função: process_geofence_and_movement()
+
+--------------------------------------------------
+🧱 ALTERAÇÃO NO BANCO (MIGRATION)
+--------------------------------------------------
+
+Criar coluna `mac` na tabela tags:
+
+ALTER TABLE public.tags
+ADD COLUMN mac text NULL;
+
+Criar índice:
+
+CREATE INDEX IF NOT EXISTS idx_tags_mac
+ON public.tags (mac)
+WHERE mac IS NOT NULL;
+
+--------------------------------------------------
+🎯 OBJETIVO DA FEATURE
+--------------------------------------------------
+
+Permitir que o app detecte dispositivos Bluetooth próximos utilizando o endereço MAC salvo no campo `tags.mac`.
+
+Quando um dispositivo Bluetooth com MAC correspondente for encontrado:
+- capturar localização atual do celular
+- atualizar posição da tag
+- salvar histórico
+
+--------------------------------------------------
+⚙️ FLUXO DA FUNCIONALIDADE
+--------------------------------------------------
+
+1. Usuário abre o app (foreground)
+
+2. App consulta Supabase:
+
+SELECT * FROM public.tags
+WHERE usuario_id = currentUser.id
+AND mac IS NOT NULL
+AND delet = false;
+
+3. CASO NÃO EXISTA nenhuma tag com `mac`:
+- NÃO iniciar Bluetooth
+- NÃO pedir permissão
+- NÃO executar nada
+- encerrar fluxo silenciosamente
+
+4. CASO EXISTA pelo menos uma tag com `mac`:
+- solicitar permissões:
+  - Bluetooth
+  - Localização
+
+5. Após permissões concedidas:
+- iniciar scan Bluetooth (somente enquanto app estiver aberto)
+
+6. Quando encontrar dispositivo com MAC correspondente:
+- capturar localização atual do celular
+- atualizar tabela `public.tags`:
+  - ultima_lat
+  - ultima_lng
+  - ultima_comunicacao
+
+- inserir em `public.historico_tags`:
+  - tag_id
+  - latitude
+  - longitude
+  - data_hora
+  - endereco (se existir geocoding)
+  - battery (se disponível)
+
+--------------------------------------------------
+⏱️ REGRA DE COOLDOWN (MUITO IMPORTANTE)
+--------------------------------------------------
+
+- Cada tag só pode ser atualizada no máximo 1 vez a cada 5 minutos
+- Se encontrar novamente antes disso → IGNORAR
+- Evitar spam de gravação
+- Evitar consumo de bateria e banco
+
+Controle pode ser feito via:
+- memória local
+- ou comparação com `ultima_comunicacao`
+
+--------------------------------------------------
+📍 REGRAS DE EXECUÇÃO
+--------------------------------------------------
+
+- A busca Bluetooth:
+  ✅ só roda com app aberto
+  ❌ NÃO roda em background
+  ❌ NÃO usar background service
+  ❌ NÃO usar foreground service persistente
+  ❌ NÃO rodar quando app estiver minimizado
+
+- Parar scan automaticamente quando:
+  - app for para background
+  - app for fechado
+
+--------------------------------------------------
+🔐 PERMISSÕES
+--------------------------------------------------
+
+- Só pedir permissões SE houver MAC cadastrado
+- Pedir:
+  - Bluetooth
+  - Localização
+
+- Se usuário negar:
+  - tratar erro
+  - não quebrar app
+
+--------------------------------------------------
+📡 INTEGRAÇÃO COM SUPABASE
+--------------------------------------------------
+
+UPDATE em `public.tags`:
+- ultima_lat
+- ultima_lng
+- ultima_comunicacao
+
+INSERT em `public.historico_tags`:
+- tag_id
+- latitude
+- longitude
+- data_hora
+- endereco
+- battery
+
+--------------------------------------------------
+⚠️ REGRAS IMPORTANTES
+--------------------------------------------------
+
+- NÃO alterar estrutura existente
+- NÃO renomear colunas
+- USAR exatamente:
+  - ultima_lat
+  - ultima_lng
+  - ultima_comunicacao
+- RESPEITAR triggers existentes
+- NÃO quebrar:
+  - enforce_ultima_comunicacao_progress()
+  - process_geofence_and_movement()
+
+- NÃO criar lógica duplicada de histórico se já existir serviço no app
+- REAPROVEITAR arquitetura existente
+
+--------------------------------------------------
+🧠 ARQUITETURA ESPERADA
+--------------------------------------------------
+
+Criar serviços separados:
+
+1. tagsService
+- buscar tags com mac
+
+2. bluetoothService
+- iniciar scan
+- parar scan
+- retornar dispositivos encontrados
+
+3. matcherService
+- comparar MAC encontrado com tags
+
+4. locationService
+- obter localização atual
+
+5. trackingService
+- aplicar cooldown
+- atualizar tags
+- inserir histórico
+
+--------------------------------------------------
+📊 LOGS OBRIGATÓRIOS
+--------------------------------------------------
+
+- consulta de tags
+- nenhuma tag com MAC
+- permissões solicitadas
+- permissões concedidas/negadas
+- início do scan
+- parada do scan
+- MAC encontrado
+- tag correspondente
+- cooldown ativo (ignorando)
+- localização capturada
+- update em tags
+- insert em histórico
+- erros de Bluetooth
+- erros de localização
+- erros de Supabase
+
+--------------------------------------------------
+🧾 ENTREGÁVEIS
+--------------------------------------------------
+
+1. Migration SQL
+2. Código completo da feature
+3. Serviço de scan Bluetooth (foreground)
+4. Integração com Supabase
+5. Controle de cooldown
+6. Tratamento de permissões
+7. Logs completos
+8. Tratamento de erros
+9. Código pronto para produção
+10. Explicação final dos arquivos criados/modificados
+
+--------------------------------------------------
+🚨 REGRAS FINAIS
+--------------------------------------------------
+
+- NÃO rodar em segundo plano
+- NÃO iniciar scan sem MAC
+- SEMPRE consultar banco antes
+- EXECUTAR apenas com app aberto
+- PRIORIZAR economia de bateria
+- IMPLEMENTAÇÃO REAL (sem simulação)

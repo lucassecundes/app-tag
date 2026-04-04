@@ -3,9 +3,13 @@ import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
 import { CustomTabBar } from '../../components/CustomTabBar';
+import { useBluetoothTracker } from '../../hooks/useBluetoothTracker';
 
 export default function TabLayout() {
   const { session, isLoading } = useAuth();
+
+  // Iniciar rastreador Bluetooth (roda apenas em Android/foreground)
+  useBluetoothTracker();
 
   if (isLoading) {
     return (

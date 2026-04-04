@@ -2,9 +2,9 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "Tagpro+",
+  name: "TAG+",
   slug: "tagpro-rastreamento",
-  version: "1.1.9",
+  version: "1.1.10",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "tagpro",
@@ -20,7 +20,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     appleTeamId: "A3L6M76G5R",
     supportsTablet: true,
     bundleIdentifier: "com.tagpro.app",
-    buildNumber: "9",
+    buildNumber: "10",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: "O aplicativo precisa de acesso à câmera para escanear o QR Code das TAGs fisicas e realizar a vinculação ao seu perfil.",
@@ -29,7 +29,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.tagpro.app",
-    versionCode: 15,
+    versionCode: 16,
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#151515"
@@ -38,7 +38,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.CAMERA",
       "android.permission.ACCESS_COARSE_LOCATION",
       "android.permission.ACCESS_FINE_LOCATION",
-      "android.permission.INTERNET"
+      "android.permission.INTERNET",
+      "android.permission.BLUETOOTH",
+      "android.permission.BLUETOOTH_ADMIN",
+      "android.permission.BLUETOOTH_SCAN",
+      "android.permission.BLUETOOTH_CONNECT"
     ]
   },
   web: {
@@ -65,6 +69,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         "RNMapboxMapsImpl": "mapbox",
         "RNMapboxMapsDownloadToken": process.env.MAPBOX_DOWNLOADS_TOKEN
+      }
+    ],
+    [
+      "react-native-ble-plx",
+      {
+        "isBackgroundEnabled": false,
+        "modes": [
+          "central"
+        ],
+        "bluetoothAlwaysPermission": "Permitir acesso ao Bluetooth para encontrar TAGs perdidas nas proximidades."
       }
     ],
     "@react-native-community/datetimepicker"

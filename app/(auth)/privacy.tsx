@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 
-const PRIVACY_CONTENT = `BESAT RASTREAMENTO | TAGPRO+
+const PRIVACY_CONTENT = `BESAT RASTREAMENTO | TAG+
 POLÍTICAS E TERMOS LEGAIS
 
 -------------------------------------------
@@ -14,7 +14,7 @@ POLÍTICAS E TERMOS LEGAIS
 Bem-vindo ao site da BESAT RASTREAMENTO. Ao acessar ou utilizar este site, o CLIENTE concorda integralmente com os termos e condições a seguir.
 
 1. OBJETO
-O presente Termo regula o uso do site e dos serviços da BESAT, incluindo a comercialização do rastreador TAGPRO+ e o acesso à plataforma de rastreamento.
+O presente Termo regula o uso do site e dos serviços da BESAT, incluindo a comercialização do rastreador TAG+ e o acesso à plataforma de rastreamento.
 
 2. ACEITAÇÃO
 Ao utilizar o site ou adquirir o produto, o CLIENTE declara ter lido e aceito integralmente os Termos de Uso e a Política de Privacidade.
@@ -44,7 +44,7 @@ Fica eleito o foro da Comarca de Campo Grande – MS para dirimir quaisquer dúv
 2. POLÍTICA DE PRIVACIDADE
 -------------------------------------------
 
-Esta Política de Privacidade explica como a BESAT coleta, utiliza e protege as informações pessoais dos usuários do site e clientes do produto TAGPRO+.
+Esta Política de Privacidade explica como a BESAT coleta, utiliza e protege as informações pessoais dos usuários do site e clientes do produto TAG+.
 
 1. COLETA DE DADOS
 Coletamos informações fornecidas pelo CLIENTE (nome, e-mail, telefone, endereço e dados de pagamento) e informações automáticas de navegação.
@@ -115,7 +115,7 @@ O CLIENTE é responsável por informar corretamente o endereço de entrega. Em c
 5. AVISO LEGAL (DISCLAIMER)
 -------------------------------------------
 
-O rastreador TAGPRO+ é um dispositivo de localização eletrônica com função informativa e tecnológica.
+O rastreador TAG+ é um dispositivo de localização eletrônica com função informativa e tecnológica.
 
 1. NATUREZA DO PRODUTO
 O serviço de rastreamento prestado pela BESAT não constitui apólice de seguro, contrato de monitoramento, vigilância ou serviço de emergência.

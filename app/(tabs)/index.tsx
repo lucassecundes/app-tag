@@ -437,7 +437,7 @@ export default function DeviceListScreen() {
               </View>
               <Text style={styles.emptyTitle}>Nenhum dispositivo</Text>
               <Text style={styles.emptyText}>
-                Você ainda não possui nenhuma TAGPRO+ vinculada.
+                Você ainda não possui nenhuma TAG+ vinculada.
               </Text>
               <Button
                 title="Vincular Agora"
