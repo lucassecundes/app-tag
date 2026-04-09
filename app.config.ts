@@ -38,7 +38,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.CAMERA",
       "android.permission.ACCESS_COARSE_LOCATION",
       "android.permission.ACCESS_FINE_LOCATION",
-      "android.permission.ACCESS_BACKGROUND_LOCATION",
       "android.permission.INTERNET",
       "android.permission.BLUETOOTH",
       "android.permission.BLUETOOTH_ADMIN",
@@ -62,10 +61,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-location",
       {
-        "locationAlwaysAndWhenInUsePermission": "Permitir acesso à localização para rastreamento.",
-        "locationAlwaysPermission": "Permitir acesso à localização em segundo plano para manter a busca da TAG ativa.",
-        "isIosBackgroundLocationEnabled": true,
-        "isAndroidBackgroundLocationEnabled": true
+        "locationWhenInUsePermission": "Permitir acesso à localização para rastreamento.",
+        "isIosBackgroundLocationEnabled": false,
+        "isAndroidBackgroundLocationEnabled": false
       }
     ],
     [
@@ -78,7 +76,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "react-native-ble-plx",
       {
-        "isBackgroundEnabled": true,
+        "isBackgroundEnabled": false,
         "modes": [
           "central"
         ],
