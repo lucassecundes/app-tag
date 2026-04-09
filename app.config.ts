@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "TAG+",
   slug: "tagpro-rastreamento",
-  version: "1.1.10",
+  version: "1.1.11",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "tagpro",
@@ -29,7 +29,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.tagpro.app",
-    versionCode: 16,
+    versionCode: 17,
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#151515"
