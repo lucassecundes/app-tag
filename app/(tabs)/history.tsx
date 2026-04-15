@@ -98,11 +98,11 @@ export default function HistoryScreen() {
     }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (filter?: FilterType, customStart?: Date, customEnd?: Date) => {
     if (!user) return;
+    setLoading(true);
 
     try {
-      // Busca um histórico maior para permitir filtragem local eficiente
       let query = supabase
         .from('historico_tags')
         .select(`
@@ -113,8 +113,6 @@ export default function HistoryScreen() {
           )
         `);
 
-      // Se não for admin OU se não estiver filtrando uma tag específica, 
-      // garante que só veja as próprias tags
       if (!filterTagId) {
         query = query.eq('tags.usuario_id', user.id);
       }
@@ -123,26 +121,52 @@ export default function HistoryScreen() {
         query = query.eq('tag_id', filterTagId);
       }
 
-      // Ordenação: Tenta data_hora, mas se falhar (ex: campo nulo em registros antigos)
-      // a query pode não ser eficiente. O ideal é ordenar no banco.
+      // Aplicar filtro de datas diretamente na query
+      const currentFilter = filter || activeFilter;
+      const now = new Date();
+      let start: Date;
+      let end: Date = endOfDay(now);
+
+      switch (currentFilter) {
+        case 'today':
+          start = startOfDay(now);
+          break;
+        case 'yesterday':
+          const yesterday = subDays(now, 1);
+          start = startOfDay(yesterday);
+          end = endOfDay(yesterday);
+          break;
+        case 'week':
+          start = subDays(now, 7);
+          break;
+        case 'month':
+          start = subDays(now, 30);
+          break;
+        case 'custom':
+          start = customStart || customRange?.start || startOfDay(now);
+          end = customEnd || customRange?.end || endOfDay(now);
+          break;
+        default:
+          start = startOfDay(now);
+      }
+
+      // Usa data_hora para filtrar
+      query = query.gte('data_hora', start.toISOString()).lte('data_hora', end.toISOString());
+
       query = query.order('data_hora', { ascending: false, nullsFirst: false });
 
-      const { data, error } = await query.limit(200);
+      // Aumentado o limite para trazer mais pontos do período
+      const { data, error } = await query.limit(2000);
 
       if (error) throw error;
 
-      // Aplicar Fallback de data localmente e garantir ordenação consistente
       const dataList = (data || []).map(item => ({
         ...item,
-        // Fallback recomendado: data_hora ?? created_at
         display_date: item.data_hora || item.created_at
-      })).sort((a, b) => {
-        // Garantir ordenação correta mesmo com fallback
-        return new Date(b.display_date).getTime() - new Date(a.display_date).getTime();
-      });
+      }));
 
       setHistory(dataList);
-      applyFilter(activeFilter, dataList);
+      setFilteredHistory(dataList);
 
     } catch (error) {
       console.error('Erro ao buscar histórico:', error);
@@ -166,54 +190,14 @@ export default function HistoryScreen() {
     }, [user, filterTagId])
   );
 
-  const applyFilter = (filter: FilterType, dataToFilter = history) => {
-
-    if (filter === 'custom' && (!customRange)) {
+  const applyFilter = (filter: FilterType, customStart?: Date, customEnd?: Date) => {
+    if (filter === 'custom' && !customRange && !customStart) {
       // Se for custom mas não tiver range definido, abrimos o picker (lógica na UI)
-      // Aqui apenas setamos o filtro ativo se já tiver range
       return;
     }
 
     setActiveFilter(filter);
-
-    const now = new Date();
-    let start: Date;
-    let end: Date = endOfDay(now);
-
-    switch (filter) {
-      case 'today':
-        start = startOfDay(now);
-        break;
-      case 'yesterday':
-        const yesterday = subDays(now, 1);
-        start = startOfDay(yesterday);
-        end = endOfDay(yesterday);
-        break;
-      case 'week':
-        start = subDays(now, 7);
-        break;
-      case 'month':
-        start = subDays(now, 30);
-        break;
-      case 'custom':
-        if (customRange) {
-          // No modo custom, usamos o horário exato definido pelo usuário
-          start = customRange.start;
-          end = customRange.end;
-        } else {
-          start = startOfDay(now); // Fallback
-        }
-        break;
-      default:
-        start = startOfDay(now);
-    }
-
-    const filtered = dataToFilter.filter(item => {
-      const itemDate = parseISO(item.display_date);
-      return isWithinInterval(itemDate, { start, end });
-    });
-
-    setFilteredHistory(filtered);
+    fetchHistory(filter, customStart, customEnd);
   };
 
   const handleCustomDateConfirm = () => {
@@ -232,7 +216,7 @@ export default function HistoryScreen() {
     }
 
     setCustomRange({ start: tempDateStart, end: tempDateEnd });
-    applyFilter('custom'); // Re-aplica com o novo range
+    applyFilter('custom', tempDateStart, tempDateEnd); // Re-aplica com o novo range passando diretamente
     setShowFilterModal(false);
   };
 
