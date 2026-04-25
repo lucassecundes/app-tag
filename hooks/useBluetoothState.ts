@@ -17,7 +17,7 @@ export function useBluetoothState() {
       try {
         let hasPermission = true;
 
-        if (Platform.Version >= 31) {
+        if (typeof Platform.Version === 'number' && Platform.Version >= 31) {
           const connectPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
           hasPermission = connectPermission;
         }

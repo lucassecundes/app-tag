@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform, PermissionsAndroid, Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 
@@ -7,10 +7,30 @@ import { bluetoothService } from '../services/bluetooth/bluetoothService';
 import { matcherService } from '../services/bluetooth/matcherService';
 import { locationService } from '../services/bluetooth/locationService';
 import { trackingService } from '../services/bluetooth/trackingService';
+import { startBackgroundTracking, stopBackgroundTracking } from '../services/bluetooth/backgroundTaskService';
 import { useAuth } from '../context/AuthContext';
 
 // Controle global para não insistir na mesma sessão do app
 let hasRequestedPermissionsThisSession = false;
+
+// Estado global reativo para avisar a UI que precisamos de GPS
+export const gpsRequirementState = {
+  isGpsDisabled: false,
+  listeners: [] as ((disabled: boolean) => void)[],
+  setGpsDisabled(disabled: boolean) {
+    if (this.isGpsDisabled !== disabled) {
+      this.isGpsDisabled = disabled;
+      this.listeners.forEach(listener => listener(disabled));
+    }
+  },
+  subscribe(listener: (disabled: boolean) => void) {
+    this.listeners.push(listener);
+    listener(this.isGpsDisabled);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+};
 
 export function useBluetoothTracker() {
   const { session } = useAuth();
@@ -40,6 +60,14 @@ export function useBluetoothTracker() {
       if (!isReady) {
         console.warn('[useBluetoothTracker] Permissões negadas ou serviços desativados. Scan abortado.');
         return;
+      }
+
+      // Se passou por tudo, garante que o modal de GPS está fechado
+      gpsRequirementState.setGpsDisabled(false);
+
+      // Inicia rastreamento em background a cada 10 mins (Apenas Android)
+      if (Platform.OS === 'android') {
+        startBackgroundTracking();
       }
 
       // 3. Iniciar Scan
@@ -100,6 +128,9 @@ export function useBluetoothTracker() {
     return () => {
       // Limpeza na desmontagem do componente (ex: logout)
       stopScan();
+      if (Platform.OS === 'android') {
+        stopBackgroundTracking();
+      }
       subscription.remove();
     };
   }, [session?.user?.id]);
@@ -137,13 +168,11 @@ async function ensurePermissionsAndServices(): Promise<boolean> {
     // 2. Serviço de GPS Ligado
     const isGpsEnabled = await Location.hasServicesEnabledAsync();
     if (!isGpsEnabled) {
-      // Tenta pedir pro usuário ligar
-      Alert.alert(
-        'GPS Desativado',
-        'Sua localização está desativada. Precisamos do GPS ativo para registrar onde sua Tag está.',
-        [{ text: 'OK' }]
-      );
+      // Aciona o nosso modal moderno de GPS
+      gpsRequirementState.setGpsDisabled(true);
       return false;
+    } else {
+      gpsRequirementState.setGpsDisabled(false);
     }
 
     // 3. Permissões de Bluetooth (Android)
@@ -225,7 +254,12 @@ async function checkOnlyPermissions(): Promise<boolean> {
   if (locPerm.status !== 'granted') return false;
   
   const isGpsEnabled = await Location.hasServicesEnabledAsync();
-  if (!isGpsEnabled) return false;
+  if (!isGpsEnabled) {
+    gpsRequirementState.setGpsDisabled(true);
+    return false;
+  } else {
+    gpsRequirementState.setGpsDisabled(false);
+  }
 
   if (Platform.OS === 'android') {
     if (Platform.Version >= 31) {

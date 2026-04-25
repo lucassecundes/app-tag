@@ -1,24 +1,23 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Platform, Linking, Dimensions } from 'react-native';
-import { Bluetooth, X } from 'lucide-react-native';
+import { MapPin, X } from 'lucide-react-native';
 import { Colors } from '../constants/Colors';
 
-interface BluetoothRequirementModalProps {
+interface LocationRequirementModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
 const { width } = Dimensions.get('window');
 
-export function BluetoothRequirementModal({ visible, onClose }: BluetoothRequirementModalProps) {
+export function LocationRequirementModal({ visible, onClose }: LocationRequirementModalProps) {
   if (Platform.OS !== 'android') return null;
 
-  const handleEnableBluetooth = async () => {
+  const handleEnableLocation = async () => {
     try {
-      await Linking.sendIntent('android.settings.BLUETOOTH_SETTINGS');
+      await Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS');
     } catch (error) {
-      console.error('[BluetoothRequirementModal] Erro ao abrir configurações:', error);
-      // Fallback se sendIntent falhar
+      console.error('[LocationRequirementModal] Erro ao abrir configurações:', error);
       Linking.openSettings().catch(() => {});
     }
   };
@@ -38,23 +37,23 @@ export function BluetoothRequirementModal({ visible, onClose }: BluetoothRequire
 
           <View style={styles.iconContainer}>
             <View style={styles.iconBackground}>
-              <Bluetooth size={36} color={Colors.info} strokeWidth={2} />
+              <MapPin size={36} color={Colors.primary} strokeWidth={2} />
             </View>
           </View>
           
-          <Text style={styles.title}>Bluetooth Desativado</Text>
+          <Text style={styles.title}>GPS Desativado</Text>
           
           <Text style={styles.description}>
-            Manter o Bluetooth ativado ajuda a melhorar a precisão da conexão dos seus dispositivos TAG+.
+            Para registrar e atualizar a localização das suas Tags no mapa, precisamos que o GPS do seu celular esteja ligado.
           </Text>
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
               style={[styles.button, styles.enableButton]} 
-              onPress={handleEnableBluetooth}
+              onPress={handleEnableLocation}
               activeOpacity={0.8}
             >
-              <Text style={styles.enableButtonText}>Ativar Bluetooth</Text>
+              <Text style={styles.enableButtonText}>Ativar Localização</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -102,11 +101,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(51, 181, 229, 0.1)',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)', // Primary color with opacity
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(51, 181, 229, 0.2)',
+    borderColor: 'rgba(255, 107, 107, 0.2)',
   },
   title: {
     fontFamily: 'Montserrat_700Bold',
@@ -133,8 +132,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   enableButton: {
-    backgroundColor: Colors.info,
-    shadowColor: Colors.info,
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

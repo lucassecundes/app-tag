@@ -39,6 +39,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.CAMERA",
       "android.permission.ACCESS_COARSE_LOCATION",
       "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_BACKGROUND_LOCATION",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.FOREGROUND_SERVICE_LOCATION",
       "android.permission.INTERNET",
       "android.permission.BLUETOOTH",
       "android.permission.BLUETOOTH_ADMIN",
@@ -64,7 +67,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         "locationWhenInUsePermission": "Permitir acesso à localização para rastreamento.",
         "isIosBackgroundLocationEnabled": false,
-        "isAndroidBackgroundLocationEnabled": false
+        "isAndroidBackgroundLocationEnabled": true
       }
     ],
     [

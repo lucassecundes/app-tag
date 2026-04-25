@@ -42,7 +42,7 @@ describe('useBluetoothState Hook', () => {
 
   it('deve verificar permissões no Android 12 (API 31) e não instanciar se não tiver permissão', async () => {
     Platform.OS = 'android';
-    Platform.Version = 31;
+    Object.defineProperty(Platform, 'Version', { value: 31, writable: true });
     (PermissionsAndroid.check as jest.Mock).mockResolvedValue(false);
 
     const { result } = renderHook(() => useBluetoothState());
@@ -59,7 +59,7 @@ describe('useBluetoothState Hook', () => {
 
   it('deve assinar mudanças de estado se tiver permissão', async () => {
     Platform.OS = 'android';
-    Platform.Version = 31;
+    Object.defineProperty(Platform, 'Version', { value: 31, writable: true });
     (PermissionsAndroid.check as jest.Mock).mockResolvedValue(true);
 
     const mockOnStateChange = jest.fn();
@@ -86,7 +86,7 @@ describe('useBluetoothState Hook', () => {
 
   it('deve funcionar no Android 10 (API 29) sem verificar BLUETOOTH_CONNECT', async () => {
     Platform.OS = 'android';
-    Platform.Version = 29;
+    Object.defineProperty(Platform, 'Version', { value: 29, writable: true });
 
     const mockOnStateChange = jest.fn();
     const mockState = jest.fn().mockResolvedValue('PoweredOff');

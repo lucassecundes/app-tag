@@ -1,21 +1,18 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { MapView, Camera, PointAnnotation, MarkerView, StyleURL } from '../../components/ExternalMap';
-import { Car, Truck, Bike, Bus, Package, Smartphone, ArrowRight, Layers, Share2, ArrowLeft, BatteryFull, BatteryMedium, BatteryLow } from 'lucide-react-native';
+import { MapView, Camera, MarkerView, StyleURL } from '../../components/ExternalMap';
+import { Car, Truck, Bike, Bus, Package, Smartphone, ArrowRight, Layers, Share2, ArrowLeft, BatteryFull, BatteryMedium, BatteryLow, Map as MapIcon, Box } from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { usePremium } from '../../context/PremiumContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { fetchAddressFromNominatim } from '../../services/geocoding';
-import { PulsingDot } from '../../components/PulsingDot';
 
 export default function GlobalMapScreen() {
   const { user } = useAuth();
-  const { isPremium } = usePremium();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const cameraRef = useRef<any>(null);
@@ -34,6 +31,7 @@ export default function GlobalMapScreen() {
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapStyle, setMapStyle] = useState(StyleURL.Dark);
+  const [is3D, setIs3D] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
   const [selectedDeviceAddress, setSelectedDeviceAddress] = useState<string>('');
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
@@ -119,7 +117,7 @@ export default function GlobalMapScreen() {
         centerCoordinate: [parseFloat(deviceList[0].ultima_lng), parseFloat(deviceList[0].ultima_lat)],
         zoomLevel: 14,
         animationDuration: 1000,
-        pitch: 65,
+        pitch: is3D ? 65 : 0,
       });
       return;
     }
@@ -165,6 +163,17 @@ export default function GlobalMapScreen() {
     setMapStyle((prev: string) => prev === StyleURL.Dark ? StyleURL.SatelliteStreet : StyleURL.Dark);
   };
 
+  const toggle3D = () => {
+    const next3D = !is3D;
+    setIs3D(next3D);
+    if (cameraRef.current) {
+      cameraRef.current.setCamera({
+        pitch: next3D ? 65 : 0,
+        animationDuration: 500,
+      });
+    }
+  };
+
   const getBatteryInfo = (level: number | null | undefined) => {
     if (level === 3) return { icon: BatteryFull, color: Colors.success, label: 'Bateria cheia', bg: 'rgba(0, 200, 81, 0.12)' };
     if (level === 2) return { icon: BatteryMedium, color: Colors.warning, label: 'Meia bateria', bg: 'rgba(255, 187, 51, 0.12)' };
@@ -189,7 +198,7 @@ export default function GlobalMapScreen() {
         centerCoordinate: [parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)],
         zoomLevel: 15,
         animationDuration: 500,
-        pitch: 65,
+        pitch: is3D ? 65 : 0,
       });
     }
   };
@@ -220,7 +229,7 @@ export default function GlobalMapScreen() {
         scaleBarEnabled={false}
         onPress={() => setSelectedDevice(null)} // Deseleciona ao clicar no mapa
       >
-        <Camera ref={cameraRef} defaultSettings={{ pitch: 65 }} />
+        <Camera ref={cameraRef} defaultSettings={{ pitch: is3D ? 65 : 0 }} />
 
         {devices.map(device => (
           <MarkerView
@@ -233,7 +242,6 @@ export default function GlobalMapScreen() {
               onPress={() => handleMarkerPress(device)}
               activeOpacity={0.8}
             >
-              <PulsingDot color={Colors.primary} size={80} />
               <View style={[
                 styles.markerBubble,
                 selectedDevice?.id === device.id && styles.markerSelected
@@ -272,9 +280,14 @@ export default function GlobalMapScreen() {
           <ArrowLeft size={24} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mapa Global</Text>
-        <TouchableOpacity style={styles.layerButton} onPress={toggleMapStyle}>
-          <Layers size={20} color={Colors.text} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.layerButton} onPress={toggle3D}>
+            {is3D ? <MapIcon size={20} color={Colors.text} /> : <Box size={20} color={Colors.text} />}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.layerButton} onPress={toggleMapStyle}>
+            <Layers size={20} color={Colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Card Flutuante do Dispositivo Selecionado */}
@@ -373,6 +386,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
   },
   layerButton: {
     width: 40,

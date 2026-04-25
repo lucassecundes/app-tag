@@ -4,9 +4,12 @@ import { fetchAddressFromNominatim } from '../geocoding';
 
 // Cache para cooldown (Tag ID -> Timestamp de última atualização local)
 const updateCache: Record<string, number> = {};
+const updateCacheBg: Record<string, number> = {};
 
 // Cooldown fixo de 5 minutos (apenas foreground)
 const COOLDOWN_MS = 5 * 60 * 1000;
+// Cooldown fixo de 10 minutos (background)
+const COOLDOWN_BG_MS = 10 * 60 * 1000;
 
 export const trackingService = {
   /**
@@ -20,6 +23,13 @@ export const trackingService = {
     return (Date.now() - lastUpdate) > COOLDOWN_MS;
   },
 
+  canUpdateTagBackground(tagId: string): boolean {
+    const lastUpdate = updateCacheBg[tagId];
+    if (!lastUpdate) return true;
+
+    return (Date.now() - lastUpdate) > COOLDOWN_BG_MS;
+  },
+
   /**
    * Marca imediatamente o cooldown para evitar race conditions com múltiplos pacotes.
    */
@@ -27,11 +37,19 @@ export const trackingService = {
     updateCache[tagId] = Date.now();
   },
 
+  lockTagBackground(tagId: string) {
+    updateCacheBg[tagId] = Date.now();
+  },
+
   /**
    * Remove o lock (útil se der erro ao capturar localização).
    */
   unlockTag(tagId: string) {
     delete updateCache[tagId];
+  },
+
+  unlockTagBackground(tagId: string) {
+    delete updateCacheBg[tagId];
   },
 
   /**

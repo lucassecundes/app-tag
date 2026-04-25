@@ -33,6 +33,9 @@ import { AppUpdateModal } from '../components/AppUpdateModal';
 import { useAppVersionCheck } from '../hooks/useAppVersionCheck';
 import { GlobalBluetoothMonitor } from '../components/GlobalBluetoothMonitor';
 
+// Importa o serviço de background para registrar as tarefas nativamente no momento do boot
+import '../services/bluetooth/backgroundTaskService';
+
 export default function RootLayout() {
   useFrameworkReady();
   usePushNotifications();
