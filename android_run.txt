@@ -1,0 +1,20 @@
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN
+- Creating native directory (./android)
+✔ Created native directory
+- Updating package.json
+✔ Updated package.json | no changes
+- Running prebuild
+✖ Prebuild failed
+Error: [android.dangerous]: withAndroidDangerousBaseMod: ENOENT: no such file or directory, lstat '/Users/user/Desktop/Trae/tag-nativo/android/app/src/main/java/com/tag/MainActivity.kt'
+Error: [android.dangerous]: withAndroidDangerousBaseMod: ENOENT: no such file or directory, lstat '/Users/user/Desktop/Trae/tag-nativo/android/app/src/main/java/com/tag/MainActivity.kt'
+    at Object.lstatSync (node:fs:1677:25)
+    at forEach (/Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/android/Package.ts:176:12)
+    at Array.forEach (<anonymous>)
+    at renamePackageOnDiskForType (/Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/android/Package.ts:174:49)
+    at renamePackageOnDisk (/Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/android/Package.ts:100:5)
+    at /Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/android/Package.ts:34:7
+    at action (/Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/plugins/withMod.ts:228:23)
+    at interceptingMod (/Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/plugins/withMod.ts:109:21)
+    at action (/Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/plugins/createBaseMod.ts:82:21)
+    at interceptingMod (/Users/user/Desktop/Trae/tag-nativo/node_modules/@expo/config-plugins/src/plugins/withMod.ts:109:21)

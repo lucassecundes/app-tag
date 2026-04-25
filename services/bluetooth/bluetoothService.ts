@@ -6,9 +6,26 @@ class BluetoothService {
   private isScanning = false;
 
   constructor() {
-    if (Platform.OS === 'android') {
-      this.manager = new BleManager();
+    // Apenas prepara o serviço, a instância real será criada no getManager()
+    // para evitar crashes de permissão no Android 12+
+  }
+
+  /**
+   * Obtém ou cria a instância do BleManager de forma segura (Lazy Initialization).
+   */
+  getManager(): BleManager | null {
+    if (Platform.OS !== 'android') return null;
+    
+    if (!this.manager) {
+      try {
+        console.log('[bluetoothService] Instanciando BleManager...');
+        this.manager = new BleManager();
+      } catch (error) {
+        console.error('[bluetoothService] Erro ao instanciar BleManager:', error);
+        return null;
+      }
     }
+    return this.manager;
   }
 
   /**
@@ -16,12 +33,13 @@ class BluetoothService {
    * onDeviceFound será chamado para cada dispositivo encontrado.
    */
   startScan(onDeviceFound: (device: Device) => void) {
-    if (this.isScanning || !this.manager) return;
+    const manager = this.getManager();
+    if (this.isScanning || !manager) return;
 
     console.log('[bluetoothService] Iniciando scan Bluetooth...');
     this.isScanning = true;
 
-    this.manager.startDeviceScan(
+    manager.startDeviceScan(
       null, 
       { allowDuplicates: false }, 
       (error, device) => {
@@ -42,7 +60,8 @@ class BluetoothService {
    * Inicia o scan buscando um MAC específico.
    */
   scanForMac(targetMac: string, onDeviceFound: (device: Device) => void) {
-    if (!this.manager) return;
+    const manager = this.getManager();
+    if (!manager) return;
 
     // Se já estiver escaneando algo, paramos para iniciar o foco
     if (this.isScanning) {
@@ -52,7 +71,7 @@ class BluetoothService {
     console.log(`[bluetoothService] Iniciando scan focado no MAC: ${targetMac}...`);
     this.isScanning = true;
 
-    this.manager.startDeviceScan(
+    manager.startDeviceScan(
       null, 
       { allowDuplicates: true }, // allowDuplicates ajuda a encontrar mais rápido estando na tela
       (error, device) => {

@@ -31,6 +31,7 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 
 import { AppUpdateModal } from '../components/AppUpdateModal';
 import { useAppVersionCheck } from '../hooks/useAppVersionCheck';
+import { GlobalBluetoothMonitor } from '../components/GlobalBluetoothMonitor';
 
 export default function RootLayout() {
   useFrameworkReady();
@@ -81,6 +82,8 @@ export default function RootLayout() {
               onUpdate={openStore}
               forceUpdate={forceUpdate}
             />
+
+            <GlobalBluetoothMonitor />
 
             {/* 
               Configuração da StatusBar para Edge-to-Edge:

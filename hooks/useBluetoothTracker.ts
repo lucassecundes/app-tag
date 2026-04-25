@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppState, AppStateStatus, Platform, PermissionsAndroid } from 'react-native';
+import { AppState, AppStateStatus, Platform, PermissionsAndroid, Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 
 import { tagsService, TagWithMac } from '../services/bluetooth/tagsService';
@@ -8,6 +8,9 @@ import { matcherService } from '../services/bluetooth/matcherService';
 import { locationService } from '../services/bluetooth/locationService';
 import { trackingService } from '../services/bluetooth/trackingService';
 import { useAuth } from '../context/AuthContext';
+
+// Controle global para não insistir na mesma sessão do app
+let hasRequestedPermissionsThisSession = false;
 
 export function useBluetoothTracker() {
   const { session } = useAuth();
@@ -32,10 +35,10 @@ export function useBluetoothTracker() {
         return;
       }
 
-      // 2. Solicitar permissões necessárias
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) {
-        console.warn('[useBluetoothTracker] Permissões negadas. Scan abortado.');
+      // 2. Solicitar e verificar permissões e status dos serviços (Apenas 1x por sessão se negado)
+      const isReady = await ensurePermissionsAndServices();
+      if (!isReady) {
+        console.warn('[useBluetoothTracker] Permissões negadas ou serviços desativados. Scan abortado.');
         return;
       }
 
@@ -62,9 +65,6 @@ export function useBluetoothTracker() {
                 console.warn('[useBluetoothTracker] Erro ao obter localização para a tag encontrada. Removendo lock.');
                 trackingService.unlockTag(matchedTag.id);
               }
-            } else {
-              // Comentado para não poluir os logs (um beacon pode enviar dezenas de pacotes por segundo)
-              // console.log(`[useBluetoothTracker] Tag ${matchedTag.id} ignorada por causa do cooldown ativo.`);
             }
           }
         });
@@ -87,6 +87,8 @@ export function useBluetoothTracker() {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         console.log('[useBluetoothTracker] App foi para Foreground. Retomando fluxo...');
+        // Resetamos a flag de sessão para poder pedir novamente quando o app for reaberto do background
+        hasRequestedPermissionsThisSession = false; 
         checkAndStartScan();
       } else if (nextAppState.match(/inactive|background/)) {
         console.log('[useBluetoothTracker] App foi para Background. Encerrando scan (apenas foreground).');
@@ -104,46 +106,157 @@ export function useBluetoothTracker() {
 }
 
 /**
- * Função utilitária para pedir as permissões necessárias
+ * Função utilitária para pedir permissões e verificar se os serviços (GPS e BT) estão ligados
  */
-async function requestPermissions(): Promise<boolean> {
-  try {
-    console.log('[useBluetoothTracker] Solicitando permissões de localização e bluetooth...');
+async function ensurePermissionsAndServices(): Promise<boolean> {
+  if (hasRequestedPermissionsThisSession) {
+    console.log('[useBluetoothTracker] Permissões já solicitadas nesta sessão. Aguardando próximo app open.');
+    // Se já pedimos e falhou/cancelou, não insistimos mais até a próxima sessão
+    // Mas ainda verificamos se, por acaso, já tem a permissão agora (o usuário pode ter ido nas configs).
+    return await checkOnlyPermissions();
+  }
 
-    // Localização (Expo)
-    const locPerm = await Location.requestForegroundPermissionsAsync();
+  hasRequestedPermissionsThisSession = true;
+
+  try {
+    console.log('[useBluetoothTracker] Verificando e solicitando permissões...');
+
+    // 1. Permissão de Localização (Expo)
+    let locPerm = await Location.getForegroundPermissionsAsync();
     if (locPerm.status !== 'granted') {
-      console.warn('[useBluetoothTracker] Permissão de localização não concedida pelo usuário.');
+      locPerm = await Location.requestForegroundPermissionsAsync();
+      if (locPerm.status !== 'granted') {
+        showPermissionAlert(
+          'Permissão de Localização Necessária',
+          'Precisamos da sua localização para rastrear as tags em background. Por favor, habilite nas configurações.'
+        );
+        return false;
+      }
+    }
+
+    // 2. Serviço de GPS Ligado
+    const isGpsEnabled = await Location.hasServicesEnabledAsync();
+    if (!isGpsEnabled) {
+      // Tenta pedir pro usuário ligar
+      Alert.alert(
+        'GPS Desativado',
+        'Sua localização está desativada. Precisamos do GPS ativo para registrar onde sua Tag está.',
+        [{ text: 'OK' }]
+      );
       return false;
     }
 
+    // 3. Permissões de Bluetooth (Android)
+    if (Platform.OS === 'android') {
+      if (Platform.Version >= 31) {
+        // Android 12+
+        const btScanGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
+        const btConnectGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
 
-    // Bluetooth (React Native / Android nativo)
-    if (typeof Platform.Version === 'number' && Platform.Version >= 31) {
-      // Android 12+ requer permissões específicas
-      const btScanPerm = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
-      const btConnectPerm = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
+        if (!btScanGranted || !btConnectGranted) {
+          const result = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+          ]);
 
-      if (
-        btScanPerm !== PermissionsAndroid.RESULTS.GRANTED ||
-        btConnectPerm !== PermissionsAndroid.RESULTS.GRANTED
-      ) {
-        console.warn('[useBluetoothTracker] Permissão de Bluetooth Scan/Connect não concedida (Android 12+).');
-        return false;
+          if (
+            result[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] !== PermissionsAndroid.RESULTS.GRANTED ||
+            result[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] !== PermissionsAndroid.RESULTS.GRANTED
+          ) {
+            showPermissionAlert(
+              'Permissão de Bluetooth Necessária',
+              'O Android 12 ou superior exige permissão de "Dispositivos Próximos" para buscar as suas Tags.'
+            );
+            return false;
+          }
+        }
+      } else {
+        // Android 11 e inferior
+        const locGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        if (!locGranted) {
+          const result = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Permissão de Localização',
+              message: 'Precisamos de acesso à sua localização fina para buscar dispositivos Bluetooth.',
+              buttonNeutral: 'Depois',
+              buttonNegative: 'Cancelar',
+              buttonPositive: 'OK',
+            }
+          );
+          if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+            return false;
+          }
+        }
       }
-    } else {
-      // Android 11 e inferior usa ACCESS_FINE_LOCATION para scan
-      const locationPerm = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-      if (locationPerm !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.warn('[useBluetoothTracker] Permissão de ACCESS_FINE_LOCATION não concedida para Bluetooth (Android < 12).');
+    }
+
+    // 4. Serviço Bluetooth Ligado
+    const manager = bluetoothService.getManager();
+    if (manager) {
+      const state = await manager.state();
+      if (state === 'PoweredOff') {
+        try {
+          // Exibe o dialog nativo para ligar o Bluetooth
+          await manager.enable();
+        } catch (e) {
+          console.warn('[useBluetoothTracker] Usuário recusou ligar o Bluetooth.');
+          return false;
+        }
+      } else if (state !== 'PoweredOn') {
+        console.warn(`[useBluetoothTracker] Bluetooth não está pronto (Status: ${state}).`);
         return false;
       }
     }
 
-    console.log('[useBluetoothTracker] Permissões concedidas.');
+    console.log('[useBluetoothTracker] Todas as permissões e serviços estão OK.');
     return true;
   } catch (error) {
-    console.error('[useBluetoothTracker] Erro ao solicitar permissões:', error);
+    console.error('[useBluetoothTracker] Erro na checagem de permissões/serviços:', error);
     return false;
   }
+}
+
+/**
+ * Apenas checa se as permissões existem de forma silenciosa (usado quando já solicitamos antes)
+ */
+async function checkOnlyPermissions(): Promise<boolean> {
+  const locPerm = await Location.getForegroundPermissionsAsync();
+  if (locPerm.status !== 'granted') return false;
+  
+  const isGpsEnabled = await Location.hasServicesEnabledAsync();
+  if (!isGpsEnabled) return false;
+
+  if (Platform.OS === 'android') {
+    if (Platform.Version >= 31) {
+      const btScanGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
+      const btConnectGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
+      if (!btScanGranted || !btConnectGranted) return false;
+    } else {
+      const locGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+      if (!locGranted) return false;
+    }
+  }
+
+  const manager = bluetoothService.getManager();
+  if (manager) {
+    const state = await manager.state();
+    if (state !== 'PoweredOn') return false;
+  }
+
+  return true;
+}
+
+/**
+ * Exibe um alerta com a opção de abrir as configurações do app
+ */
+function showPermissionAlert(title: string, message: string) {
+  Alert.alert(
+    title,
+    message,
+    [
+      { text: 'Agora não', style: 'cancel' },
+      { text: 'Abrir Configurações', onPress: () => Linking.openSettings() }
+    ]
+  );
 }

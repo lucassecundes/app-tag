@@ -85,6 +85,8 @@ export default function GlobalMapScreen() {
 
   // Realtime subscription
   useEffect(() => {
+    if (!user) return;
+
     const subscription = supabase
       .channel('global_map_updates')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tags' }, (payload) => {
@@ -94,11 +96,12 @@ export default function GlobalMapScreen() {
 
           const exists = current.find(d => d.id === updated.id);
           if (exists) {
+            // Só atualiza dispositivos que já estavam na lista filtrada do usuário
             return current.map(d => d.id === updated.id ? updated : d);
-          } else {
-            // Se não existia na lista (ex: acabou de ganhar localização), adiciona
-            return [...current, updated];
           }
+          // Não adiciona dispositivos desconhecidos via Realtime para evitar
+          // exibir veículos de outros usuários (a lista inicial já está filtrada)
+          return current;
         });
       })
       .subscribe();
@@ -106,7 +109,7 @@ export default function GlobalMapScreen() {
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, []);
+  }, [user]);
 
   const fitToDevices = (deviceList: any[]) => {
     if (!deviceList.length || !cameraRef.current) return;
