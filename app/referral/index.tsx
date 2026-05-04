@@ -80,7 +80,7 @@ export default function ReferralInviteScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
                 <LinearGradient
-                    colors={['#0057FF', '#0094FF']}
+                    colors={['#051813', '#0A2E24']}
                     style={styles.header}
                 >
                     <TouchableOpacity
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 10,
     },
     copyButtonText: {
-        color: Colors.white,
+        color: Colors.background,
         fontFamily: 'Montserrat_700Bold',
         fontSize: 12,
     },

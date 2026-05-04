@@ -4,7 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "TAG+",
   slug: "tagpro-rastreamento",
-  version: "1.1.12",
+  version: "2.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "tagpro",
@@ -20,9 +20,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     appleTeamId: "A3L6M76G5R",
     supportsTablet: true,
     bundleIdentifier: "com.tagpro.app",
-    buildNumber: "11",
+    buildNumber: "12",
     infoPlist: {
-      CFBundleShortVersionString: "1.1.11",
+      CFBundleShortVersionString: "2.0.0",
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: "O aplicativo precisa de acesso à câmera para escanear o QR Code das TAGs fisicas e realizar a vinculação ao seu perfil.",
       NSLocationWhenInUseUsageDescription: "Sua localização é utilizada para mostrar sua posição relativa aos seus dispositivos rastreados no mapa e auxiliar na recuperação."
@@ -30,7 +30,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.tagpro.app",
-    versionCode: 18,
+    versionCode: 19,
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#151515"

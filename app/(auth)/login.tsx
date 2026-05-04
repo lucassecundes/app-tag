@@ -79,7 +79,7 @@ export default function LoginScreen() {
             title="ENTRAR"
             onPress={handleLogin}
             loading={loading}
-            icon={<LogIn size={20} color={Colors.white} />}
+            icon={<LogIn size={20} color={Colors.background} />}
             style={styles.loginButton}
           />
 

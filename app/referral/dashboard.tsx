@@ -64,7 +64,7 @@ export default function ReferralDashboardScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
                 <LinearGradient
-                    colors={['#0057FF', '#0094FF']}
+                    colors={['#051813', '#0A2E24']}
                     style={styles.header}
                 >
                     <View style={styles.navBar}>

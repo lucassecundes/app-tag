@@ -1,29 +1,62 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
+  RefreshControl,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  Animated,
+  Linking,
+} from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Plus, Smartphone, Tag, MapPin, AlertCircle, Car, Truck, Bike, Bus, Package, Bell, ShieldAlert, Filter, Search, X, User } from 'lucide-react-native';
+import {
+  Plus,
+  Tag,
+  AlertCircle,
+  Filter,
+  Search,
+  X,
+  User,
+  ShoppingBag,
+} from 'lucide-react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../../context/PremiumContext';
-
-import { ChatIcon } from '../../components/ChatIcon';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { translateSupabaseError } from '../../lib/errorTranslator';
-import { Image } from 'react-native';
 import { DeviceListItem } from '../../components/DeviceListItem';
+
+const TAG_ICON = require('../../assets/images/icon tag.png');
 
 export default function DeviceListScreen() {
   const { user } = useAuth();
   const { isPremium } = usePremium();
+
+  const techAnim = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(techAnim, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [techAnim]);
 
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [firstName, setFirstName] = useState('Usuário');
-  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   // Admin Filter States
   const [isAdmin, setIsAdmin] = useState(false);
@@ -31,7 +64,7 @@ export default function DeviceListScreen() {
   const [targetUserId, setTargetUserId] = useState('');
   const [targetTagCode, setTargetTagCode] = useState('');
   const [filterActive, setFilterActive] = useState(false);
-  const [targetUserLabel, setTargetUserLabel] = useState(''); // Store the email or name for display
+  const [targetUserLabel, setTargetUserLabel] = useState('');
 
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,15 +75,8 @@ export default function DeviceListScreen() {
   const handleSearchTextChange = (text: string) => {
     setSearchQuery(text);
     if (searchTimer) clearTimeout(searchTimer);
-
-    if (text.length < 2) {
-      setUserResults([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      performSearch(text);
-    }, 500);
+    if (text.length < 2) { setUserResults([]); return; }
+    const timer = setTimeout(() => { performSearch(text); }, 500);
     setSearchTimer(timer);
   };
 
@@ -62,34 +88,22 @@ export default function DeviceListScreen() {
         .select('auth_user_id, nome, email')
         .or(`email.ilike.%${query}%,nome.ilike.%${query}%`)
         .limit(5);
-
       if (error) throw error;
       setUserResults(data || []);
     } catch (error) {
-      console.log('Erro na busca principal:', error);
-      // Fallback: tentar apenas por nome se email falhar
       try {
-        const { data } = await supabase
-          .from('usuario')
-          .select('auth_user_id, nome')
-          .ilike('nome', `%${query}%`)
-          .limit(5);
+        const { data } = await supabase.from('usuario').select('auth_user_id, nome').ilike('nome', `%${query}%`).limit(5);
         setUserResults(data || []);
-      } catch (e) {
-        console.log('Erro no fallback:', e);
-      }
-    } finally {
-      setIsSearching(false);
-    }
+      } catch (e) { console.log('Erro no fallback:', e); }
+    } finally { setIsSearching(false); }
   };
 
   const selectUser = (selectedUser: any) => {
     setTargetUserId(selectedUser.auth_user_id);
-    setTargetTagCode(''); // Clear tag code if selecting user
+    setTargetTagCode('');
     setTargetUserLabel(selectedUser.email || selectedUser.nome || selectedUser.auth_user_id);
     setFilterActive(true);
     setShowFilterModal(false);
-    // O useEffect cuidará de recarregar os dispositivos
   };
 
   useEffect(() => {
@@ -99,32 +113,18 @@ export default function DeviceListScreen() {
 
   const fetchUserName = async () => {
     if (user) {
-      // Tenta pegar do metadata primeiro
       if (user.user_metadata?.full_name) {
         setFirstName(user.user_metadata.full_name.split(' ')[0]);
         return;
       }
-
-      // Se não tiver no metadata, busca no banco
-      const { data } = await supabase
-        .from('usuario')
-        .select('nome')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (data?.nome) {
-        setFirstName(data.nome.split(' ')[0]);
-      }
+      const { data } = await supabase.from('usuario').select('nome').eq('auth_user_id', user.id).single();
+      if (data?.nome) setFirstName(data.nome.split(' ')[0]);
     }
   };
 
   const checkAdminStatus = async () => {
     if (user) {
-      const { data } = await supabase
-        .from('usuario')
-        .select('role')
-        .eq('auth_user_id', user.id)
-        .single();
+      const { data } = await supabase.from('usuario').select('role').eq('auth_user_id', user.id).single();
       setIsAdmin(data?.role === 'admin');
     }
   };
@@ -133,39 +133,15 @@ export default function DeviceListScreen() {
     if (!user) return;
     setErrorMsg(null);
     try {
-      console.log('Buscando dispositivos...');
-
-      let query = supabase
-        .from('tags')
-        .select('*')
-        .order('ultima_comunicacao', { ascending: false });
-
-      // Se for admin e tiver filtro ativo
+      let query = supabase.from('tags').select('*').order('ultima_comunicacao', { ascending: false });
       if (isAdmin && filterActive) {
-        if (targetUserId) {
-          // Busca pelo usuario_id
-          query = query.eq('usuario_id', targetUserId);
-        } else if (targetTagCode) {
-          // Busca pelo código da tag
-          // Usando ilike para ser case-insensitive e permitir busca parcial se desejar, 
-          // mas eq é melhor para código exato. O usuário pediu "pesquisar por codigo".
-          // Vamos usar ilike para flexibilidade
-          query = query.ilike('codigo', `%${targetTagCode}%`);
-        }
+        if (targetUserId) query = query.eq('usuario_id', targetUserId);
+        else if (targetTagCode) query = query.ilike('codigo', `%${targetTagCode}%`);
       } else {
-        // Comportamento padrão: busca os dispositivos do próprio usuário + compartilhados
         query = query.or(`usuario_id.eq.${user.id},usuarios_ids.cs.{"${user.id}"}`);
       }
-
       const { data, error } = await query;
-
-      if (error) {
-        console.error('Erro Supabase:', error);
-        setErrorMsg(translateSupabaseError(error.message));
-        throw error;
-      }
-
-      console.log('Dispositivos encontrados:', data?.length);
+      if (error) { setErrorMsg(translateSupabaseError(error.message)); throw error; }
       setDevices(data || []);
     } catch (error: any) {
       console.log('Erro no catch:', error);
@@ -176,246 +152,193 @@ export default function DeviceListScreen() {
   }, [user, isAdmin, filterActive, targetUserId, targetTagCode]);
 
   const applyFilter = () => {
-    if (targetTagCode) {
-      setTargetUserLabel(`Código: ${targetTagCode}`);
-      setTargetUserId(''); // Clear user ID if using code
-    } else {
-      setTargetUserLabel(targetUserId);
-    }
+    if (targetTagCode) { setTargetUserLabel(`Código: ${targetTagCode}`); setTargetUserId(''); }
+    else setTargetUserLabel(targetUserId);
     setFilterActive(true);
     setShowFilterModal(false);
     setLoading(true);
-    // fetchDevices will be called by useFocusEffect or we call it here?
-    // Since fetchDevices is a dependency of useFocusEffect now (via useCallback ref change?), 
-    // actually useFocusEffect depends on callback consistency.
-    // Better to just call it. But since state update is async, focus effect handles it.
   };
 
   const clearFilter = () => {
-    setTargetUserId('');
-    setTargetTagCode('');
-    setFilterActive(false);
-    setLoading(true);
-    setTimeout(() => {
-      // Trigger refresh
-      setFilterActive(false); // Ensure state
-    }, 100);
+    setTargetUserId(''); setTargetTagCode(''); setFilterActive(false); setLoading(true);
   };
 
   useFocusEffect(
     React.useCallback(() => {
-      if (user) {
-        fetchDevices();
-      }
+      if (user) fetchDevices();
     }, [user, fetchDevices])
   );
 
   useEffect(() => {
-    // Realtime subscription para atualizar a lista se algo mudar
     const subscription = supabase
       .channel('tags_list_update_main')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tags' }, () => {
-        console.log('Mudança detectada na tabela tags, atualizando...');
-        fetchDevices();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tags' }, () => { fetchDevices(); })
       .subscribe();
+    return () => { supabase.removeChannel(subscription); };
+  }, [fetchDevices]);
 
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, [fetchDevices]); // Added fetchDevices dependency to ensure latest closure is used
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchDevices();
-  };
+  const onRefresh = () => { setRefreshing(true); fetchDevices(); };
 
   const handleDevicePress = (device: any) => {
-    // Se o dispositivo ainda não possui posição válida, redireciona para a tela de conectando
     if (!device.ultima_lat || !device.ultima_lng) {
-      router.push({
-        pathname: '/device-detail/connecting',
-        params: {
-          id: device.id,
-          nome: device.nome,
-          mac: device.mac
-        }
-      });
+      router.push({ pathname: '/device-detail/connecting', params: { id: device.id, nome: device.nome, mac: device.mac } });
       return;
     }
-
     router.push({
       pathname: '/device-detail/[id]',
-      params: {
-        id: device.id,
-        nome: device.nome,
-        mac: device.mac,
-        lat: device.ultima_lat,
-        lng: device.ultima_lng,
-        address: device.endereco
-      }
+      params: { id: device.id, nome: device.nome, mac: device.mac, lat: device.ultima_lat, lng: device.ultima_lng, address: device.endereco },
     });
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'car': return <Car size={24} color={Colors.primary} />;
-      case 'moto': return <Bike size={24} color={Colors.primary} />;
-      case 'truck': return <Truck size={24} color={Colors.primary} />;
-      case 'bus': return <Bus size={24} color={Colors.primary} />;
-      case 'object': return <Package size={24} color={Colors.primary} />;
-      default: return <Smartphone size={24} color={Colors.primary} />;
-    }
-  };
-
-  // Função auxiliar para calcular tempo relativo
   const getTimeAgo = (dateString: string) => {
     if (!dateString) return '';
-
-    const now = new Date();
-    const past = new Date(dateString);
-    const diffMs = now.getTime() - past.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
+    const now = new Date(); const past = new Date(dateString);
+    const diffMins = Math.floor((now.getTime() - past.getTime()) / 60000);
     if (diffMins < 1) return 'Agora';
-    if (diffMins < 60) return `${diffMins}m`;
-
+    if (diffMins < 60) return `${diffMins} min`;
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h`;
-
+    if (diffHours < 24) return `cerca de ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d`;
+    return `${diffDays} dia${diffDays > 1 ? 's' : ''}`;
   };
+
+  // Compute stats
+  const totalDevices = devices.length;
+  const activeDevices = devices.filter(d => d.ultima_comunicacao && (new Date().getTime() - new Date(d.ultima_comunicacao).getTime()) < 24 * 60 * 60 * 1000).length;
+  const activePercent = totalDevices > 0 ? Math.round((activeDevices / totalDevices) * 100) : 0;
 
   const renderItem = ({ item }: { item: any }) => {
     const timeAgo = getTimeAgo(item.ultima_comunicacao);
-
-    return (
-      <DeviceListItem
-        item={item}
-        onPress={handleDevicePress}
-        timeAgo={timeAgo}
-      />
-    );
+    return <DeviceListItem item={item} onPress={handleDevicePress} timeAgo={timeAgo} />;
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Olá, {firstName}</Text>
-          <Text style={styles.title}>Lista de Dispositivos</Text>
+  const renderHeader = () => (
+    <View>
+      {/* Stats Card */}
+      <View style={styles.statsCard}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{totalDevices}</Text>
+          <Text style={styles.statLabel}>Total</Text>
+          <Text style={styles.statSub}>Dispositivos</Text>
         </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: Colors.primary }]}>{activeDevices}</Text>
+          <Text style={styles.statLabel}>Ativos</Text>
+          <Text style={[styles.statSub, { color: Colors.primary }]}>• {activePercent}%</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {devices.some(d => d.battery === 1) ? '⚠' : '100%'}
+          </Text>
+          <Text style={styles.statLabel}>Bateria</Text>
+          <Text style={styles.statSub}>Média</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: activeDevices === totalDevices && totalDevices > 0 ? Colors.primary : Colors.warning, fontSize: 13 }]}>
+            {activeDevices === totalDevices && totalDevices > 0 ? '✓' : '!'}
+          </Text>
+          <Text style={styles.statLabel}>Status</Text>
+          <Text style={[styles.statSub, { color: activeDevices === totalDevices && totalDevices > 0 ? Colors.primary : Colors.warning }]}>
+            {activeDevices === totalDevices && totalDevices > 0 ? 'TUDO OK' : 'ATENÇÃO'}
+          </Text>
+        </View>
+      </View>
 
+      {/* Section Header */}
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionIconWrap}>
+            <Tag size={16} color={Colors.primary} />
+          </View>
+          <Text style={styles.sectionTitle}>Meus veículos</Text>
+        </View>
         {isAdmin && (
           <TouchableOpacity
             style={[styles.filterButton, filterActive && styles.filterButtonActive]}
             onPress={() => setShowFilterModal(true)}
           >
-            <Filter size={20} color={filterActive ? Colors.white : Colors.text} />
+            <Filter size={16} color={filterActive ? Colors.background : Colors.textSecondary} />
+            <Text style={[styles.filterBtnText, filterActive && { color: Colors.background }]}>
+              {filterActive ? 'Filtrado' : 'Filtrar'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Exibe aviso de filtro ativo */}
       {filterActive && (
         <View style={styles.filterBanner}>
-          <Text style={styles.filterBannerText}>Filtrando por: {targetUserLabel}</Text>
-          <TouchableOpacity onPress={clearFilter}>
-            <X size={16} color={Colors.white} />
+          <Text style={styles.filterBannerText}>Filtro: {targetUserLabel}</Text>
+          <TouchableOpacity onPress={clearFilter} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <X size={14} color={Colors.background} />
           </TouchableOpacity>
         </View>
       )}
+    </View>
+  );
 
-      {/* Modal de Filtro */}
-      <Modal
-        visible={showFilterModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowFilterModal(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
+  // "Buy new Tag+" CTA footer
+  const renderFooter = () => (
+    <TouchableOpacity
+      style={styles.acquireContainer}
+      onPress={() => Linking.openURL('https://tag.besat.com.br/checkout/tagpro')}
+      activeOpacity={0.88}
+    >
+      <View style={styles.acquireLeft}>
+        <Text style={styles.acquireTitle}>Proteja mais veículos com Tag+</Text>
+        <Text style={styles.acquireSubtitle}>
+          Adquira um novo dispositivo e tenha ainda mais controle e segurança.
+        </Text>
+        <TouchableOpacity
+          style={styles.acquireBtn}
+          onPress={() => Linking.openURL('https://tag.besat.com.br/checkout/tagpro')}
+          activeOpacity={0.8}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filtrar por Usuário</Text>
-              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                <X size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
+          <ShoppingBag size={16} color={Colors.background} style={{ marginRight: 6 }} />
+          <Text style={styles.acquireBtnText}>Comprar nova Tag+</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.acquireImageContainer}>
+        <Animated.View style={[styles.acquireImageGlow, {
+          opacity: techAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] }),
+          transform: [{ scale: techAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.8] }) }]
+        }]} />
+        <Animated.View style={[styles.acquireImageGlow, {
+          opacity: techAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] }),
+          transform: [{ scale: techAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.5] }) }]
+        }]} />
+        <Image source={TAG_ICON} style={styles.acquireImage} resizeMode="contain" />
+      </View>
+    </TouchableOpacity>
+  );
 
-            <Text style={styles.modalLabel}>Pesquisar Usuário (Nome ou Email)</Text>
-            <Input
-              placeholder="Digite nome ou email..."
-              value={searchQuery}
-              onChangeText={handleSearchTextChange}
-              autoCapitalize="none"
-              icon={<Search size={20} color={Colors.textSecondary} />}
-            />
-
-            {isSearching && (
-              <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 16 }} />
-            )}
-
-            <FlatList
-              data={userResults}
-              keyExtractor={(item) => item.auth_user_id}
-              style={{ marginTop: 8, maxHeight: 200 }}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.resultItem}
-                  onPress={() => selectUser(item)}
-                >
-                  <View style={styles.resultIcon}>
-                    <User size={20} color={Colors.primary} />
-                  </View>
-                  <View>
-                    <Text style={styles.resultName}>{item.nome || 'Sem nome'}</Text>
-                    {item.email && <Text style={styles.resultEmail}>{item.email}</Text>}
-                    <Text style={styles.resultId}>ID: {item.auth_user_id?.substring(0, 8)}...</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                searchQuery.length > 2 && !isSearching ? (
-                  <Text style={styles.noResultText}>Nenhum usuário encontrado.</Text>
-                ) : null
-              }
-            />
-
-            <View style={styles.modalDivider} />
-
-            <Text style={styles.modalLabel}>Ou Pesquisar por Código (TAG)</Text>
-            <Input
-              placeholder="Ex: 1234567890"
-              value={targetTagCode}
-              onChangeText={(text) => {
-                setTargetTagCode(text);
-                if (text) setTargetUserId(''); // Clear user ID if checking code
-              }}
-              autoCapitalize="characters"
-              icon={<Tag size={20} color={Colors.textSecondary} />}
-            />
-
-            <Button
-              title="APLICAR FILTRO"
-              onPress={applyFilter}
-              style={{ marginTop: 16 }}
-              variant="outline"
-            />
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* 3. Exibição Condicional do Banner Premium (Apenas para não-admin/não-premium) */}
-
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Gerencie todos os dispositivos da Tag+.</Text>
+          <Text style={styles.title}>Dispositivos</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => {}}>
+            <Search size={20} color={Colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerIconBtn, styles.headerIconBtnPrimary]}
+            onPress={() => router.push('/devices/add')}
+          >
+            <Plus size={20} color={Colors.background} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {errorMsg && (
         <View style={styles.errorContainer}>
-          <AlertCircle size={20} color={Colors.white} />
-          <Text style={styles.errorText}>Erro: {errorMsg}</Text>
+          <AlertCircle size={16} color={Colors.white} />
+          <Text style={styles.errorText}>{errorMsg}</Text>
         </View>
       )}
 
@@ -429,217 +352,195 @@ export default function DeviceListScreen() {
           renderItem={renderItem}
           keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+          ListHeaderComponent={renderHeader()}
+          ListFooterComponent={renderFooter()}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconContainer}>
-                <Tag size={48} color={Colors.textSecondary} />
-              </View>
+              <Image source={TAG_ICON} style={styles.emptyImage} resizeMode="contain" />
               <Text style={styles.emptyTitle}>Nenhum dispositivo</Text>
-              <Text style={styles.emptyText}>
-                Você ainda não possui nenhuma TAG+ vinculada.
-              </Text>
-              <Button
-                title="Vincular Agora"
-                onPress={() => router.push('/devices/add')}
-                style={{ marginTop: 24, width: '100%' }}
-              />
+              <Text style={styles.emptyText}>Você ainda não possui nenhuma TAG+ vinculada.</Text>
+              <Button title="Vincular Agora" onPress={() => router.push('/devices/add')} style={{ marginTop: 24, width: '100%' }} />
             </View>
           }
         />
       )}
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push('/devices/add')}
-        activeOpacity={0.8}
-      >
-        <Plus size={24} color={Colors.white} />
-      </TouchableOpacity>
-
-      <ChatIcon style={{ bottom: 200, right: 24 }} />
+      {/* Admin Filter Modal */}
+      <Modal visible={showFilterModal} transparent={true} animationType="slide" onRequestClose={() => setShowFilterModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtrar por Usuário</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}><X size={24} color={Colors.text} /></TouchableOpacity>
+            </View>
+            <Text style={styles.modalLabel}>Pesquisar Usuário (Nome ou Email)</Text>
+            <Input
+              placeholder="Digite nome ou email..."
+              value={searchQuery}
+              onChangeText={handleSearchTextChange}
+              autoCapitalize="none"
+              icon={<Search size={20} color={Colors.textSecondary} />}
+            />
+            {isSearching && <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 16 }} />}
+            <FlatList
+              data={userResults}
+              keyExtractor={(item) => item.auth_user_id}
+              style={{ marginTop: 8, maxHeight: 200 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.resultItem} onPress={() => selectUser(item)}>
+                  <View style={styles.resultIcon}><User size={20} color={Colors.primary} /></View>
+                  <View>
+                    <Text style={styles.resultName}>{item.nome || 'Sem nome'}</Text>
+                    {item.email && <Text style={styles.resultEmail}>{item.email}</Text>}
+                    <Text style={styles.resultId}>ID: {item.auth_user_id?.substring(0, 8)}...</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={searchQuery.length > 2 && !isSearching ? <Text style={styles.noResultText}>Nenhum usuário encontrado.</Text> : null}
+            />
+            <View style={styles.modalDivider} />
+            <Text style={styles.modalLabel}>Ou Pesquisar por Código (TAG)</Text>
+            <Input
+              placeholder="Ex: 1234567890"
+              value={targetTagCode}
+              onChangeText={(text) => { setTargetTagCode(text); if (text) setTargetUserId(''); }}
+              autoCapitalize="characters"
+              icon={<Tag size={20} color={Colors.textSecondary} />}
+            />
+            <Button title="APLICAR FILTRO" onPress={applyFilter} style={{ marginTop: 16 }} variant="outline" />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 58,
+    paddingBottom: 16,
     backgroundColor: Colors.background,
   },
   greeting: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
     color: Colors.textSecondary,
+    marginBottom: 2,
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontFamily: 'Montserrat_700Bold',
     color: Colors.text,
+    letterSpacing: -0.5,
   },
-  errorContainer: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: Colors.error,
-    borderRadius: 8,
+  headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  errorText: {
-    color: Colors.white,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    flex: 1,
-  },
-  listContent: {
-    padding: 24,
-    paddingBottom: 160,
-  },
-  centerState: {
-    flex: 1,
+  headerIconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  card: {
+  headerIconBtnPrimary: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+
+  // Stats Card
+  statsCard: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 18,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    paddingVertical: 18,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
-    elevation: 2,
+    justifyContent: 'space-between',
   },
-  cardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: Colors.surfaceHighlight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-    overflow: 'hidden',
-  },
-  deviceImage: {
-    width: 48,
-    height: 48,
-  },
-  cardContent: {
+  statItem: {
     flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontFamily: 'Montserrat_600SemiBold',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    fontFamily: 'Poppins_400Regular',
-    color: Colors.textSecondary,
-    marginBottom: 6,
-  },
-  statusRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
+    gap: 2,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-    flexShrink: 0,
-  },
-  statusText: {
-    fontSize: 11,
-    fontFamily: 'Poppins_500Medium',
-    color: Colors.textSecondary,
-    flexShrink: 1,
-  },
-  actionIcon: {
-    padding: 8,
-    backgroundColor: 'rgba(255, 122, 0, 0.1)',
-    borderRadius: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 60,
-  },
-  emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.surfaceHighlight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 20,
+  statValue: {
+    fontSize: 22,
     fontFamily: 'Montserrat_700Bold',
     color: Colors.text,
-    marginBottom: 8,
   },
-  emptyText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
+  statLabel: {
+    fontSize: 9,
+    fontFamily: 'Poppins_500Medium',
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  statSub: {
+    fontSize: 10,
+    fontFamily: 'Poppins_500Medium',
     color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 130, // Aumentado para dar mais espaço da tab bar
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: Colors.border,
+  },
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 14,
   },
-  rightActions: {
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  alertsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  alertBadge: {
+  sectionIconWrap: {
     width: 28,
     height: 28,
     borderRadius: 8,
+    backgroundColor: Colors.primaryGlow,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.text,
+  },
   filterButton: {
-    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -647,89 +548,143 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
+  filterBtnText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+    color: Colors.textSecondary,
+  },
   filterBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   filterBannerText: {
-    color: Colors.white,
+    color: Colors.background,
     fontFamily: 'Poppins_500Medium',
     fontSize: 12,
-  },
-  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
+
+  // List
+  listContent: {
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 120,
   },
-  modalHeader: {
+
+  // Empty State
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 40 },
+  emptyImage: { width: 100, height: 100, opacity: 0.7, marginBottom: 20 },
+  emptyTitle: { fontSize: 20, fontFamily: 'Montserrat_700Bold', color: Colors.text, marginBottom: 8 },
+  emptyText: { fontSize: 14, fontFamily: 'Poppins_400Regular', color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+
+  // Error
+  errorContainer: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: Colors.error,
+    borderRadius: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    gap: 8,
   },
-  modalTitle: {
-    fontSize: 20,
+  errorText: { color: Colors.white, fontFamily: 'Poppins_400Regular', fontSize: 12, flex: 1 },
+
+  centerState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  // Acquire CTA
+  acquireContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    overflow: 'hidden',
+    position: 'relative',
+    // subtle glow
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  acquireLeft: { flex: 1, paddingRight: 10 },
+  acquireTitle: {
+    fontSize: 15,
     fontFamily: 'Montserrat_700Bold',
     color: Colors.text,
+    marginBottom: 6,
+    lineHeight: 22,
   },
-  modalLabel: {
-    fontSize: 14,
-    fontFamily: 'Montserrat_500Medium',
-    color: Colors.textSecondary,
-    marginBottom: 8,
-  },
-  resultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  resultIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.surfaceHighlight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  resultName: {
-    fontSize: 14,
-    fontFamily: 'Montserrat_600SemiBold',
-    color: Colors.text,
-  },
-  resultEmail: {
+  acquireSubtitle: {
     fontSize: 12,
     fontFamily: 'Poppins_400Regular',
     color: Colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 14,
   },
-  resultId: {
-    fontSize: 10,
-    fontFamily: 'Poppins_400Regular',
-    color: Colors.textSecondary,
-    opacity: 0.7,
+  acquireBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 12,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  noResultText: {
-    textAlign: 'center',
-    color: Colors.textSecondary,
-    marginTop: 16,
-    fontFamily: 'Poppins_400Regular',
+  acquireBtnText: {
+    fontSize: 13,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: Colors.background,
   },
-  modalDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 16,
+  acquireImageContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  acquireImageGlow: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  acquireImage: {
+    width: 80,
+    height: 80,
+    zIndex: 1,
+  },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: Colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 20, fontFamily: 'Montserrat_700Bold', color: Colors.text },
+  modalLabel: { fontSize: 13, fontFamily: 'Montserrat_500Medium', color: Colors.textSecondary, marginBottom: 8 },
+  resultItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  resultIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primaryGlow, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  resultName: { fontSize: 14, fontFamily: 'Montserrat_600SemiBold', color: Colors.text },
+  resultEmail: { fontSize: 12, fontFamily: 'Poppins_400Regular', color: Colors.textSecondary },
+  resultId: { fontSize: 10, fontFamily: 'Poppins_400Regular', color: Colors.textSecondary, opacity: 0.7 },
+  noResultText: { textAlign: 'center', color: Colors.textSecondary, marginTop: 16, fontFamily: 'Poppins_400Regular' },
+  modalDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 16 },
 });

@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { fetchAddressFromNominatim } from '../../services/geocoding';
+import Supercluster from 'supercluster';
 
 export default function GlobalMapScreen() {
   const { user } = useAuth();
@@ -35,6 +36,53 @@ export default function GlobalMapScreen() {
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
   const [selectedDeviceAddress, setSelectedDeviceAddress] = useState<string>('');
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+
+  const [clusters, setClusters] = useState<any[]>([]);
+  const [superclusterInstance, setSuperclusterInstance] = useState<any>(null);
+  const [region, setRegion] = useState({
+    bounds: [-180, -90, 180, 90],
+    zoom: 2,
+  });
+
+  useEffect(() => {
+    const sc = new Supercluster({
+      radius: 50,
+      maxZoom: 16,
+    });
+    
+    const points = devices.map(device => ({
+      type: 'Feature',
+      properties: { cluster: false, deviceId: device.id, device },
+      geometry: {
+        type: 'Point',
+        coordinates: [parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)]
+      }
+    }));
+    
+    sc.load(points as any);
+    setSuperclusterInstance(sc);
+  }, [devices]);
+
+  useEffect(() => {
+    if (superclusterInstance) {
+      try {
+        const bbox = [
+          region.bounds[0], // west
+          region.bounds[1], // south
+          region.bounds[2], // east
+          region.bounds[3]  // north
+        ] as [number, number, number, number];
+        
+        const nextClusters = superclusterInstance.getClusters(
+          bbox,
+          region.zoom
+        );
+        setClusters(nextClusters);
+      } catch (err) {
+        console.log('Supercluster error:', err);
+      }
+    }
+  }, [superclusterInstance, region]);
 
   const fetchDevices = async () => {
     if (!user) return;
@@ -228,51 +276,99 @@ export default function GlobalMapScreen() {
         attributionEnabled={false}
         scaleBarEnabled={false}
         onPress={() => setSelectedDevice(null)} // Deseleciona ao clicar no mapa
+        onCameraChanged={(e) => {
+          if (e.properties?.bounds) {
+            const { ne, sw } = e.properties.bounds;
+            const pad = 0.5; // padding
+            setRegion({
+              bounds: [sw[0] - pad, sw[1] - pad, ne[0] + pad, ne[1] + pad],
+              zoom: Math.max(0, Math.floor(e.properties.zoom)),
+            });
+          }
+        }}
       >
         <Camera ref={cameraRef} defaultSettings={{ pitch: is3D ? 65 : 0 }} />
 
-        {devices.map(device => (
-          <MarkerView
-            key={device.id}
-            id={`marker-${device.id}`}
-            coordinate={[parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)]}
-          >
-            <TouchableOpacity
-              style={styles.markerRoot}
-              onPress={() => handleMarkerPress(device)}
-              activeOpacity={0.8}
-            >
-              <View style={[
-                styles.markerBubble,
-                selectedDevice?.id === device.id && styles.markerSelected
-              ]}>
-                {device.imagem_url && !imageErrors[device.id] ? (
-                  <Image
-                    source={{ uri: device.imagem_url }}
-                    style={styles.markerImage}
-                    resizeMode="cover"
-                    fadeDuration={0}
-                    onError={() => {
-                      console.log(`Erro ao carregar imagem no mapa para ${device.id}`);
-                      setImageErrors(prev => ({ ...prev, [device.id]: true }));
-                    }}
-                  />
-                ) : (
-                  <View style={styles.iconContainer}>
-                    {getMarkerIcon(device.icone)}
+        {clusters.map((cluster) => {
+          const [lng, lat] = cluster.geometry.coordinates;
+          const isCluster = cluster.properties.cluster;
+
+          if (isCluster) {
+            return (
+              <MarkerView
+                key={`cluster-${cluster.properties.cluster_id}`}
+                id={`cluster-${cluster.properties.cluster_id}`}
+                coordinate={[lng, lat]}
+              >
+                <TouchableOpacity
+                  style={styles.clusterRoot}
+                  onPress={() => {
+                    const expansionZoom = superclusterInstance?.getClusterExpansionZoom(cluster.properties.cluster_id);
+                    if (cameraRef.current && expansionZoom) {
+                      cameraRef.current.setCamera({
+                        centerCoordinate: [lng, lat],
+                        zoomLevel: expansionZoom,
+                        animationDuration: 500,
+                        pitch: is3D ? 65 : 0,
+                      });
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.clusterBubble}>
+                    <Text style={styles.clusterText}>
+                      {cluster.properties.point_count}
+                    </Text>
                   </View>
-                )}
-              </View>
-              <View style={[
-                styles.markerArrow,
-                selectedDevice?.id === device.id && { borderTopColor: Colors.success }
-              ]} />
-              <View style={styles.labelContainer}>
-                <Text style={styles.labelText} numberOfLines={1}>{device.nome}</Text>
-              </View>
-            </TouchableOpacity>
-          </MarkerView>
-        ))}
+                </TouchableOpacity>
+              </MarkerView>
+            );
+          }
+
+          const device = cluster.properties.device;
+          return (
+            <MarkerView
+              key={`device-${device.id}`}
+              id={`marker-${device.id}`}
+              coordinate={[parseFloat(device.ultima_lng), parseFloat(device.ultima_lat)]}
+            >
+              <TouchableOpacity
+                style={styles.markerRoot}
+                onPress={() => handleMarkerPress(device)}
+                activeOpacity={0.8}
+              >
+                <View style={[
+                  styles.markerBubble,
+                  selectedDevice?.id === device.id && styles.markerSelected
+                ]}>
+                  {device.imagem_url && !imageErrors[device.id] ? (
+                    <Image
+                      source={{ uri: device.imagem_url }}
+                      style={styles.markerImage}
+                      resizeMode="cover"
+                      fadeDuration={0}
+                      onError={() => {
+                        console.log(`Erro ao carregar imagem no mapa para ${device.id}`);
+                        setImageErrors(prev => ({ ...prev, [device.id]: true }));
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.iconContainer}>
+                      {getMarkerIcon(device.icone)}
+                    </View>
+                  )}
+                </View>
+                <View style={[
+                  styles.markerArrow,
+                  selectedDevice?.id === device.id && { borderTopColor: Colors.success }
+                ]} />
+                <View style={styles.labelContainer}>
+                  <Text style={styles.labelText} numberOfLines={1}>{device.nome}</Text>
+                </View>
+              </TouchableOpacity>
+            </MarkerView>
+          );
+        })}
       </MapView>
 
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -431,11 +527,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: Colors.white,
+    borderWidth: 4,
+    borderColor: Colors.primary,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -458,7 +554,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: '100%',
     height: '100%',
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -473,13 +569,40 @@ const styles = StyleSheet.create({
     borderTopWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: Colors.white,
+    borderTopColor: Colors.primary,
     marginTop: -1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
     zIndex: 1,
+  },
+  clusterRoot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+    height: 60,
+    backgroundColor: 'transparent',
+  },
+  clusterBubble: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  clusterText: {
+    color: Colors.background,
+    fontSize: 16,
+    fontFamily: 'Montserrat_700Bold',
   },
   // Removed old styles: markerCore, markerStem
   // Device Card Styles

@@ -53,7 +53,7 @@ export default function ProfileScreen() {
   const menuItems = [
     // Admin menu - Only visible for admin users
     ...(userData?.role === 'admin' ? [
-      { icon: <Shield size={20} color="#FF6B35" />, label: 'Área do Admin', action: () => router.push('/admin/dashboard'), isAdmin: true }
+      { icon: <Shield size={20} color={Colors.primary} />, label: 'Área do Admin', action: () => router.push('/admin/dashboard'), isAdmin: true }
     ] : []),
     { icon: <User size={20} color={Colors.text} />, label: 'Dados Pessoais', action: () => router.push('/(tabs)/personal-data') },
     // Ação atualizada para navegar para a tela de dispositivos
@@ -98,7 +98,7 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={[styles.menuItemLabel, item.isAdmin && styles.adminLabel]}>{item.label}</Text>
               </View>
-              <ChevronRight size={20} color={item.isAdmin ? '#FF6B35' : Colors.textSecondary} />
+              <ChevronRight size={20} color={item.isAdmin ? Colors.primary : Colors.textSecondary} />
             </TouchableOpacity>
           ))}
         </View>
@@ -220,15 +220,15 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   adminMenuItem: {
-    backgroundColor: 'rgba(255, 107, 53, 0.05)',
+    backgroundColor: Colors.primaryGlow,
     borderLeftWidth: 3,
-    borderLeftColor: '#FF6B35',
+    borderLeftColor: Colors.primary,
   },
   adminIconBox: {
-    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    backgroundColor: Colors.primaryBorder,
   },
   adminLabel: {
-    color: '#FF6B35',
+    color: Colors.primary,
     fontFamily: 'Montserrat_600SemiBold',
   },
   logoutButton: {

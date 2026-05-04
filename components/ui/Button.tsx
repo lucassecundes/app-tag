@@ -37,11 +37,11 @@ export const Button = ({
   const getTextColor = () => {
     if (disabled) return Colors.textMuted;
     switch (variant) {
-      case 'primary': return Colors.white;
+      case 'primary': return Colors.background;
       case 'secondary': return Colors.text;
       case 'outline': return Colors.primary;
       case 'ghost': return Colors.textSecondary;
-      default: return Colors.white;
+      default: return Colors.background;
     }
   };
 

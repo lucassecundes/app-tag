@@ -239,13 +239,13 @@ const styles = StyleSheet.create({
   tagBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 122, 0, 0.1)',
+    backgroundColor: Colors.primaryGlow,
     padding: 12,
     borderRadius: 8,
     marginBottom: 24,
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 122, 0, 0.3)',
+    borderColor: Colors.primary,
   },
   tagText: {
     color: Colors.primary,
