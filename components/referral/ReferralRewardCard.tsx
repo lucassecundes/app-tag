@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { CheckCircle2, Lock } from 'lucide-react-native';
 
@@ -10,6 +10,7 @@ interface ReferralRewardCardProps {
     isUnlocked: boolean;
     isRedeemed?: boolean;
     icon?: React.ReactNode;
+    onPress?: () => void;
 }
 
 export const ReferralRewardCard = ({
@@ -18,10 +19,15 @@ export const ReferralRewardCard = ({
     subText,
     isUnlocked,
     isRedeemed,
-    icon
+    icon,
+    onPress
 }: ReferralRewardCardProps) => {
     return (
-        <View style={[styles.card, isUnlocked && styles.unlockedCard]}>
+        <TouchableOpacity 
+            style={[styles.card, isUnlocked && styles.unlockedCard]} 
+            onPress={isUnlocked ? onPress : undefined}
+            activeOpacity={isUnlocked ? 0.7 : 1}
+        >
             <View style={styles.badgeContainer}>
                 {isUnlocked ? (
                     <CheckCircle2 size={20} color={Colors.success} />
@@ -39,7 +45,7 @@ export const ReferralRewardCard = ({
             </View>
 
             {icon && <View style={styles.iconContainer}>{icon}</View>}
-        </View>
+        </TouchableOpacity>
     );
 };
 
@@ -78,14 +84,14 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     rewardBadge: {
-        backgroundColor: Colors.primary,
+        backgroundColor: Colors.primaryDark,
         borderRadius: 8,
         paddingHorizontal: 8,
         paddingVertical: 4,
         marginBottom: 4,
     },
     rewardText: {
-        color: Colors.white,
+        color: Colors.background,
         fontFamily: 'Montserrat_700Bold',
         fontSize: 12,
         textAlign: 'center',

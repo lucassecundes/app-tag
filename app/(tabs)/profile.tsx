@@ -61,7 +61,7 @@ export default function ProfileScreen() {
     { icon: <Shield size={20} color={Colors.text} />, label: 'Segurança e Senha', action: () => router.push('/(tabs)/security') },
     { icon: <Settings size={20} color={Colors.text} />, label: 'Configurações do App', action: () => router.push('/(tabs)/settings') },
     { icon: <Gift size={20} color={Colors.text} />, label: 'Minhas Indicações', action: () => router.push('/referral/dashboard') },
-    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Suporte Técnico', action: () => Linking.openURL('https://wa.me/556740420408?text=Olá,%20preciso%20de%20suporte%20com%20o%20app%20Tag%2B.') },
+    { icon: <HelpCircle size={20} color={Colors.text} />, label: 'Ajuda', action: () => router.push('/faq') },
   ];
 
   return (

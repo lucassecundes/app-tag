@@ -4,10 +4,8 @@ import { useBluetoothState } from '../hooks/useBluetoothState';
 import { gpsRequirementState } from '../hooks/useBluetoothTracker';
 import { BluetoothRequirementModal } from './BluetoothRequirementModal';
 import { LocationRequirementModal } from './LocationRequirementModal';
-import { useAuth } from '../context/AuthContext';
 
 export function GlobalBluetoothMonitor() {
-  const { session } = useAuth();
   const { bluetoothState, isReady } = useBluetoothState();
   const [btModalVisible, setBtModalVisible] = useState(false);
   const [gpsModalVisible, setGpsModalVisible] = useState(false);
@@ -15,7 +13,7 @@ export function GlobalBluetoothMonitor() {
 
   // Monitora o estado do Bluetooth
   useEffect(() => {
-    if (Platform.OS !== 'android' || !isReady || !session?.user) return;
+    if (Platform.OS !== 'android' || !isReady) return;
 
     // Apenas mostrar se o Bluetooth estiver desligado (PoweredOff)
     if (bluetoothState === 'PoweredOff' && !hasPromptedBt) {
@@ -27,18 +25,18 @@ export function GlobalBluetoothMonitor() {
     if (bluetoothState === 'PoweredOn' && btModalVisible) {
       setBtModalVisible(false);
     }
-  }, [bluetoothState, isReady, hasPromptedBt, btModalVisible, session?.user]);
+  }, [bluetoothState, isReady, hasPromptedBt, btModalVisible]);
 
   // Monitora o estado do GPS (via hook useBluetoothTracker)
   useEffect(() => {
-    if (Platform.OS !== 'android' || !session?.user) return;
+    if (Platform.OS !== 'android') return;
     
     const unsubscribe = gpsRequirementState.subscribe((disabled) => {
       setGpsModalVisible(disabled);
     });
 
     return () => unsubscribe();
-  }, [session?.user]);
+  }, []);
 
   if (Platform.OS !== 'android') return null;
 

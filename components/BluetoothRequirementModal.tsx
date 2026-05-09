@@ -45,7 +45,7 @@ export function BluetoothRequirementModal({ visible, onClose }: BluetoothRequire
           <Text style={styles.title}>Bluetooth Desativado</Text>
           
           <Text style={styles.description}>
-            Manter o Bluetooth ativado ajuda a melhorar a precisão da conexão dos seus dispositivos TAG+.
+            Mantenha o Bluetooth ativado para garantir o rastreamento em tempo real dos seus veículos e objetos.
           </Text>
 
           <View style={styles.buttonContainer}>

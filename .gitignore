@@ -34,4 +34,5 @@ expo-env.d.ts
 .cursor/
 .trae/
 *.sql
-
+supabase/.temp/
+test-db.js
